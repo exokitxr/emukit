@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/modulesio/libretro#readme",
   "dependencies": {
-    "express": "^4.16.3"
+    "express": "^4.16.3",
+    "mime": "^2.3.1"
   }
 }
