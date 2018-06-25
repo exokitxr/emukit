@@ -1,0 +1,23 @@
+{
+  "name": "libretro-web",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/modulesio/libretro.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/modulesio/libretro/issues"
+  },
+  "homepage": "https://github.com/modulesio/libretro#readme",
+  "dependencies": {
+    "express": "^4.16.3"
+  }
+}
