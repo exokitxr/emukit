@@ -1,0 +1,13 @@
+shaders = 2
+
+shader0 = shaders/metacrt/bufC.slang
+scale_type0 = viewport
+filter_linear0 = true
+
+shader1 = ../anti-aliasing/shaders/fxaa.slang
+
+textures = "cubeMap;table"
+cubeMap = shaders/metacrt/basilica.png
+cubeMap_wrap_mode = repeat
+table = shaders/metacrt/woodgrain.png
+table_wrap_mode = repeat

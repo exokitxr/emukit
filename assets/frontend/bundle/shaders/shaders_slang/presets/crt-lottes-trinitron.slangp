@@ -1,0 +1,110 @@
+shaders = 18
+
+shader0 = ../crt/shaders/glow-trails/glow-trails0.slang
+filter_linear0 = false
+scale_type0 = source
+scale0 = 1.0
+
+shader1 = "../blurs/blur9fast-vertical.slang"
+filter_linear1 = "true"
+scale_type1 = "source"
+scale1 = "1.0"
+srgb_framebuffer1 = "true"
+
+shader2 = "../blurs/blur9fast-horizontal.slang"
+alias2 = "TRAIL_BLUR"
+filter_linear2 = "true"
+scale_type2 = "source"
+scale2 = "1.0"
+srgb_framebuffer2 = "true"
+
+shader3 = ../crt/shaders/glow-trails/glow-trails1.slang
+
+shader4 = ../crt/shaders/crt-royale/src/crt-royale-first-pass-linearize-crt-gamma-bob-fields.slang
+srgb_framebuffer4 = true
+alias4 = "REFERENCE"
+
+shader5 = "../crt/shaders/crt-lottes-multipass/old/threshold.slang"
+srgb_framebuffer5 = "true"
+
+shader6 = "../blurs/blur9fast-vertical.slang"
+filter_linear6 = "true"
+scale_type6 = "source"
+scale6 = "1.0"
+srgb_framebuffer6 = "true"
+
+shader7 = "../blurs/blur9fast-horizontal.slang"
+alias7 = "HALATION_BLUR"
+filter_linear7 = "true"
+scale_type7 = "source"
+scale7 = "1.0"
+srgb_framebuffer7 = "true"
+
+shader8 = ../crt/shaders/crt-lottes-multipass/old/horz3minus1.slang
+srgb_framebuffer8 = true
+scale_type8 = source
+filter_linear8 = true
+alias8 = horz3minus1
+
+shader9 = ../crt/shaders/crt-lottes-multipass/old/horz3plus1.slang
+srgb_framebuffer9 = true
+scale_type9 = source
+filter_linear9 = true
+alias9 = horz3plus1
+
+shader10 = ../crt/shaders/crt-lottes-multipass/old/horz5minus2.slang
+srgb_framebuffer10 = true
+scale_type10 = source
+filter_linear10 = true
+alias10 = horz5minus2
+
+shader11 = ../crt/shaders/crt-lottes-multipass/old/horz5.slang
+srgb_framebuffer11 = true
+scale_type11 = source
+filter_linear11 = true
+alias11 = horz5
+
+shader12 = ../crt/shaders/crt-lottes-multipass/old/horz5plus2.slang
+srgb_framebuffer12 = true
+scale_type12 = source
+filter_linear12 = true
+alias12 = horz5plus2
+
+shader13 = ../crt/shaders/crt-lottes-multipass/old/horz7minus1.slang
+srgb_framebuffer13 = true
+scale_type13 = source
+filter_linear13 = true
+alias13 = horz7minus1
+
+shader14 = ../crt/shaders/crt-lottes-multipass/old/horz7.slang
+srgb_framebuffer14 = true
+scale_type14 = source
+filter_linear14 = true
+alias14 = horz7
+
+shader15 = ../crt/shaders/crt-lottes-multipass/old/horz7plus1.slang
+srgb_framebuffer15 = true
+scale_type15 = source
+filter_linear15 = true
+alias15 = horz7plus1
+
+shader16 = ../crt/shaders/crt-lottes-multipass/old/crt-lottes-multipass-glow.slang
+texture_wrap_mode16 = "clamp_to_edge"
+scale16 = 4.0
+scale_type16 = source
+
+shader17 = ../border/shaders/imgborder.slang
+
+textures = BORDER
+BORDER = ../border/textures/pvm.png
+
+parameters = "border_on_top;mixfactor;threshold;trail_bright;glowFactor;hardScan;shadowMask;warpX"
+mixfactor = "0.75"
+threshold = "0.90"
+trail_bright = "0.07"
+glowFactor = "0.10"
+hardScan = "-20.0"
+shadowMask = "2.0"
+warpX = "0.0"
+warpY = "0.3"
+border_on_top = 1.0

@@ -1,0 +1,17 @@
+shaders = 4
+
+shader0 = ../crt/shaders/crt-aperture.slang
+scale_type0 = source
+scale0 = 4.0
+filter_linear0 = false
+alias0 = Reference
+
+shader1 = ../blurs/blur11resize-vertical.slang
+scale_type1 = source
+scale1 = 0.5
+
+shader2 = ../blurs/blur11resize-horizontal.slang
+scale_type2 = source
+scale2 = 0.5
+
+shader3 = shaders/bigblur.slang

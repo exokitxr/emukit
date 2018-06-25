@@ -1,0 +1,14 @@
+shaders = 4
+
+shader0 = ../misc/image-adjustment.slang
+alias0 = Reference
+
+shader1 = ../blurs/blur9fast-vertical.slang
+scale_type1 = source
+scale1 = 1.0
+
+shader2 = ../blurs/blur9fast-horizontal.slang
+scale_type2 = source
+scale2 = 1.0
+
+shader3 = shaders/bigblur.slang
