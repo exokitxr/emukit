@@ -41,8 +41,10 @@ function idbfsInit()
             //fallback to imfs
             afs = new BrowserFS.FileSystem.InMemory();
             console.log("WEBPLAYER: error: " + e + " falling back to in-memory filesystem");
-            setupFileSystem("browser");
-            preLoadingComplete();
+            setupFileSystem("browser")
+              .then(() => {
+                preLoadingComplete();
+              });
          }
          else
          {
@@ -53,8 +55,10 @@ function idbfsInit()
                {
                   afs = new BrowserFS.FileSystem.InMemory();
                   console.log("WEBPLAYER: error: " + e + " falling back to in-memory filesystem");
-                  setupFileSystem("browser");
-                  preLoadingComplete();
+                  setupFileSystem("browser")
+                    .then(() => {
+                      preLoadingComplete();
+                    });
                }
                else
                {
@@ -73,8 +77,10 @@ function idbfsSyncComplete()
    $('#icnLocal').addClass('fa-check');
    console.log("WEBPLAYER: idbfs setup successful");
 
-   setupFileSystem("browser");
-   preLoadingComplete();
+   setupFileSystem("browser")
+     .then(() => {
+        preLoadingComplete();
+      });
 }
 
 function preLoadingComplete()
@@ -86,30 +92,40 @@ function preLoadingComplete()
   });
   document.getElementById("btnRun").disabled = false;
   $('#btnRun').removeClass('disabled');
+
+  $('.webplayer').show();
+  $('.webplayer-preview').hide();
+  document.getElementById("btnRun").disabled = true;
 }
 
 function setupFileSystem(backend)
 {
-   /* create a mountable filesystem that will server as a root
-      mountpoint for browserfs */
-   var mfs =  new BrowserFS.FileSystem.MountableFileSystem();
+  return Promise.all([
+    fetch("/assets/frontend/bundle/.index-xhr").then(res => res.json()),
+    fetch("/assets/cores/.index-xhr").then(res => res.json()),
+  ])
+    .then(indexXhrs => {
+     /* create a mountable filesystem that will server as a root
+        mountpoint for browserfs */
+     var mfs =  new BrowserFS.FileSystem.MountableFileSystem();
 
-   /* create an XmlHttpRequest filesystem for the bundled data */
-   var xfs1 =  new BrowserFS.FileSystem.XmlHttpRequest
-      (".index-xhr", "/assets/frontend/bundle/");
-   /* create an XmlHttpRequest filesystem for core assets */
-   var xfs2 =  new BrowserFS.FileSystem.XmlHttpRequest
-      (".index-xhr", "/assets/cores/");
+     /* create an XmlHttpRequest filesystem for the bundled data */
+     var xfs1 =  new BrowserFS.FileSystem.XmlHttpRequest
+        (indexXhrs[0], "/assets/frontend/bundle/");
+     /* create an XmlHttpRequest filesystem for core assets */
+     var xfs2 =  new BrowserFS.FileSystem.XmlHttpRequest
+        (indexXhrs[1], "/assets/cores/");
 
-   console.log("WEBPLAYER: initializing filesystem: " + backend);
-   mfs.mount('/home/web_user/retroarch/userdata', afs);
+     console.log("WEBPLAYER: initializing filesystem: " + backend);
+     mfs.mount('/home/web_user/retroarch/userdata', afs);
 
-   mfs.mount('/home/web_user/retroarch/bundle', xfs1);
-   mfs.mount('/home/web_user/retroarch/userdata/content/downloads', xfs2);
-   BrowserFS.initialize(mfs);
-   var BFS = new BrowserFS.EmscriptenFS();
-   FS.mount(BFS, {root: '/home'}, '/home');
-   console.log("WEBPLAYER: " + backend + " filesystem initialization successful");
+     mfs.mount('/home/web_user/retroarch/bundle', xfs1);
+     mfs.mount('/home/web_user/retroarch/userdata/content/downloads', xfs2);
+     BrowserFS.initialize(mfs);
+     var BFS = new BrowserFS.EmscriptenFS();
+     FS.mount(BFS, {root: '/home'}, '/home');
+     console.log("WEBPLAYER: " + backend + " filesystem initialization successful");
+  });
 }
 
 /**
