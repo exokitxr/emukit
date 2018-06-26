@@ -30,6 +30,6 @@ rdSync = (dpath, tree, name) ->
       # Ignore and move on.
   return tree
 
-fs_listing = rdSync(process.cwd(), {}, '/')
+fs_listing = rdSync(path.resolve(process.cwd(), process.argv[2]), {}, '/')
 console.log(JSON.stringify(fs_listing))
 
