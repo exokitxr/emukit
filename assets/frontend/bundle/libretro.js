@@ -194,6 +194,26 @@ function uploadData(data,name)
    FS.unlink(name);
 }
 
+window.addEventListener('dragover', e => {
+  e.preventDefault();
+});
+window.addEventListener('drop', e => {
+  e.preventDefault();
+
+  const {files} = e.dataTransfer;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const fr = new FileReader();
+    fr.onload = () => {
+      uploadData(fr.result, file.name);
+    };
+    fr.onerror = err => {
+      console.warn(err.stack);
+    };
+    fr.readAsArrayBuffer(file);
+  }
+});
+
 var Module =
 {
   // noInitialRun: true,
