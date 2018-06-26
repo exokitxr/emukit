@@ -196,7 +196,7 @@ function uploadData(data,name)
 
 var Module =
 {
-  noInitialRun: true,
+  // noInitialRun: true,
   arguments: ["-v", "--menu"],
   preRun: [],
   postRun: [],
