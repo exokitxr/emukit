@@ -1529,23 +1529,27 @@ var Browser = {
           display.requestAnimationFrame(function() {
             display.getFrameData(frameData);
 
-            /* new THREE.Matrix4().fromArray(frameData.leftProjectionMatrix)
-              .multiply(new THREE.Matrix4().fromArray(frameData.leftViewMatrix)) */
-            // new THREE.Matrix4().fromArray(frameData.leftViewMatrix)
-              // .toArray(hackMatrix);
-            // hackMatrix.set(frameData.leftViewMatrix);
-
             func.apply(this, arguments);
 
-            display.submitFrame();
+            renderScene();
+
+            // display.submitFrame();
           });
         } else if (typeof window === "undefined") {
-            Browser.fakeRequestAnimationFrame(func)
+            Browser.fakeRequestAnimationFrame(function() {
+              func.apply(this, arguments);
+
+              renderScene();
+            });
         } else {
             if (!window.requestAnimationFrame) {
                 window.requestAnimationFrame = window["requestAnimationFrame"] || window["mozRequestAnimationFrame"] || window["webkitRequestAnimationFrame"] || window["msRequestAnimationFrame"] || window["oRequestAnimationFrame"] || Browser.fakeRequestAnimationFrame
             }
-            window.requestAnimationFrame(func)
+            window.requestAnimationFrame(function() {
+              func.apply(this, arguments);
+
+              renderScene();
+            })
         }
     },
     safeCallback: (function(func) {
@@ -2228,6 +2232,9 @@ var GL = {
                     }])
                       .then(() => {
                         display = firstDisplay;
+
+                        renderer.vr.setDevice(display);
+                        renderer.vr.enabled = true;
 
                         leftEyeParameters = display.getEyeParameters('left');
                         rightEyeParameters = display.getEyeParameters('right');
@@ -8414,6 +8421,7 @@ function _emscripten_glDetachShader(program, shader) {
 }
 
 function _emscripten_glDisable(x0) {
+    throw new Error('fail');
     GLctx["disable"](x0)
 }
 
