@@ -557,6 +557,21 @@ function bootstrapScene() {
         // context.disable(context.STENCIL_TEST);
         renderer.state.reset();
 
+        const _updateControllers = () => {
+          const gamepads = navigator.getGamepads();
+
+          for (let i = 0; i < gamepads.length; i++) {
+            const gamepad = gamepads[i];
+            if (gamepad) {
+              const gamepadMesh = gamepadMeshes[i];
+              gamepadMesh.position.fromArray(gamepad.pose.position);
+              gamepadMesh.quaternion.fromArray(gamepad.pose.orientation);
+              gamepadMesh.updateMatrixWorld();
+            }
+          }
+        };
+        _updateControllers();
+
         // console.log('overlay 1');
         renderer.render(scene, camera);
         // console.log('overlay 2');
