@@ -495,42 +495,130 @@ function bootstrapScene() {
         direction: 'left',
         x: -1,
         y: 0,
-        keyCode: 37,
-        which: 37,
-        charCode: 0,
-        key: 'ArrowLeft',
-        code: 'ArrowLeft',
       },
       {
         direction: 'right',
         x: 1,
         y: 0,
-        keyCode: 39,
-        which: 39,
-        charCode: 0,
-        key: 'ArrowRight',
-        code: 'ArrowRight',
       },
       {
         direction: 'up',
         x: 0,
         y: 1,
-        keyCode: 38,
-        which: 38,
-        charCode: 0,
-        key: 'ArrowUp',
-        code: 'ArrowUp',
       },
       {
         direction: 'down',
         x: 0,
         y: -1,
-        keyCode: 40,
-        which: 40,
-        charCode: 0,
-        key: 'ArrowDown',
-        code: 'ArrowDown',
       },
+    ];
+    const LEFT_PAD_KEYS = {
+      left: [
+        {
+          keyCode: 37,
+          which: 37,
+          charCode: 0,
+          key: 'ArrowLeft',
+          code: 'ArrowLeft',
+        },
+        {
+          keyCode: 74,
+          which: 74,
+          charCode: 0,
+          key: 'J',
+          code: 'KeyJ',
+        },
+      ],
+      right: [
+        {
+          keyCode: 39,
+          which: 39,
+          charCode: 0,
+          key: 'ArrowRight',
+          code: 'ArrowRight',
+        },
+        {
+          keyCode: 76,
+          which: 76,
+          charCode: 0,
+          key: 'L',
+          code: 'KeyL',
+        },
+      ],
+      up: [
+        {
+          keyCode: 38,
+          which: 38,
+          charCode: 0,
+          key: 'ArrowUp',
+          code: 'ArrowUp',
+        },
+        {
+          keyCode: 73,
+          which: 73,
+          charCode: 0,
+          key: 'I',
+          code: 'KeyI',
+        },
+      ],
+      down: [
+        {
+          keyCode: 40,
+          which: 40,
+          charCode: 0,
+          key: 'ArrowDown',
+          code: 'ArrowDown',
+        },
+        {
+          keyCode: 75,
+          which: 75,
+          charCode: 0,
+          key: 'K',
+          code: 'KeyK',
+        },
+      ],
+    };
+    const RIGHT_PAD_KEYS = {
+      left: [
+        {
+          keyCode: 49,
+          which: 49,
+          charCode: 0,
+          key: '1',
+          code: 'Digit1',
+        },
+      ],
+      right: [
+        {
+          keyCode: 52,
+          which: 52,
+          charCode: 0,
+          key: '4',
+          code: 'Digit4',
+        },
+      ],
+      up: [
+        {
+          keyCode: 51,
+          which: 51,
+          charCode: 0,
+          key: '3',
+          code: 'Digit3',
+        },
+      ],
+      down: [
+        {
+          keyCode: 50,
+          which: 50,
+          charCode: 0,
+          key: '2',
+          code: 'Digit2',
+        },
+      ],
+    };
+    const PAD_KEYS = [
+      LEFT_PAD_KEYS,
+      RIGHT_PAD_KEYS,
     ];
     const _getGamepadDirection = gamepad => {
       const {axes} = gamepad;
@@ -670,8 +758,9 @@ function bootstrapScene() {
               const lastPadPressed = lastPadPresseds[i];
               lastPadPresseds[i] = padPressed;
               if (padPressed && !lastPadPressed) {
-                if (i === 0) {
-                  const directionSpec = DIRECTIONS.find(d => d.direction === padPressed);
+                const directionSpecs = PAD_KEYS[i][padPressed];
+                for (let j = 0; j < directionSpecs.length; j++) {
+                  const directionSpec = directionSpecs[j];
                   const {keyCode, which, charCode, key, code} = directionSpec;
 
                   const keydownEvent = new KeyboardEvent('keydown', {
@@ -680,23 +769,14 @@ function bootstrapScene() {
                     charCode,
                     key,
                     code,
-                  });
-                  console.log('dispatch', keydownEvent.key);
-                  window.document.dispatchEvent(keydownEvent);
-                } else {
-                  const keydownEvent = new KeyboardEvent('keydown', {
-                    keyCode: 65,
-                    which: 65,
-                    charCode: 0,
-                    key: 'A',
-                    code: 'KeyA',
                   });
                   console.log('dispatch', keydownEvent.key);
                   window.document.dispatchEvent(keydownEvent);
                 }
               } else if (!padPressed && lastPadPressed) {
-                if (i === 0) {
-                  const directionSpec = DIRECTIONS.find(d => d.direction === lastPadPressed);
+                const directionSpecs = PAD_KEYS[i][lastPadPressed];
+                for (let j = 0; j < directionSpecs.length; j++) {
+                  const directionSpec = directionSpecs[j];
                   const {keyCode, which, charCode, key, code} = directionSpec;
 
                   const keyupEvent = new KeyboardEvent('keyup', {
@@ -708,57 +788,35 @@ function bootstrapScene() {
                   });
                   // console.log('dispatch', keyupEvent.key);
                   window.document.dispatchEvent(keyupEvent);
-                } else {
+                }
+              } else if (padPressed && lastPadPressed && padPressed !== lastPadPressed) {
+                const lastDirectionSpecs = PAD_KEYS[i][lastPadPressed];
+                for (let j = 0; j < lastDirectionSpecs.length; j++) {
+                  const lastDirectionSpec = lastDirectionSpecs[j];
+                  const {keyCode, which, charCode, key, code} = lastDirectionSpec;
+
                   const keyupEvent = new KeyboardEvent('keyup', {
-                    keyCode: 65,
-                    which: 65,
-                    charCode: 0,
-                    key: 'A',
-                    code: 'KeyA',
+                    keyCode,
+                    which,
+                    charCode,
+                    key,
+                    code,
                   });
                   // console.log('dispatch', keyupEvent.key);
                   window.document.dispatchEvent(keyupEvent);
                 }
-              } else if (padPressed && lastPadPressed && padPressed !== lastPadPressed) {
-                if (i === 0) {
-                  const lastDirectionSpec = DIRECTIONS.find(d => d.direction === lastPadPressed);
-                  const keyupEvent = new KeyboardEvent('keyup', {
-                    keyCode: lastDirectionSpec.keyCode,
-                    which: lastDirectionSpec.which,
-                    charCode: lastDirectionSpec.charCode,
-                    key: lastDirectionSpec.key,
-                    code: lastDirectionSpec.code,
-                  });
-                  // console.log('dispatch', keyupEvent.key);
-                  window.document.dispatchEvent(keyupEvent);
 
-                  const directionSpec = DIRECTIONS.find(d => d.direction === padPressed);
-                  const keydownEvent = new KeyboardEvent('keydown', {
-                    keyCode: directionSpec.keyCode,
-                    which: directionSpec.which,
-                    charCode: directionSpec.charCode,
-                    key: directionSpec.key,
-                    code: directionSpec.code,
-                  });
-                  console.log('dispatch', keydownEvent.key);
-                  window.document.dispatchEvent(keydownEvent);
-                } else {
-                  const keyupEvent = new KeyboardEvent('keyup', {
-                    keyCode: 65,
-                    which: 65,
-                    charCode: 0,
-                    key: 'A',
-                    code: 'KeyA',
-                  });
-                  // console.log('dispatch', keyupEvent.key);
-                  window.document.dispatchEvent(keyupEvent);
+                const directionSpecs = PAD_KEYS[i][padPressed];
+                for (let j = 0; j < directionSpecs.length; j++) {
+                  const directionSpec = directionSpecs[j];
+                  const {keyCode, which, charCode, key, code} = directionSpec;
 
                   const keydownEvent = new KeyboardEvent('keydown', {
-                    keyCode: 65,
-                    which: 65,
-                    charCode: 0,
-                    key: 'A',
-                    code: 'KeyA',
+                    keyCode,
+                    which,
+                    charCode,
+                    key,
+                    code,
                   });
                   console.log('dispatch', keydownEvent.key);
                   window.document.dispatchEvent(keydownEvent);
