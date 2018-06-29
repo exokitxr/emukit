@@ -815,7 +815,7 @@ function bootstrapScene() {
     };
     // renderScene();
 
-    navigator.getVRDisplays && navigator.getVRDisplays()
+    Module.vr && navigator.getVRDisplays && navigator.getVRDisplays()
       .then(displays => {
         const display = displays[0];
         return display.requestPresent([{
@@ -978,6 +978,7 @@ var Module = {
     },
     canvas: document.getElementById('canvas'),
     context: null,
+    vr: true,
     display: null,
     leftEyeParameters: null,
     rightEyeParameters: null,

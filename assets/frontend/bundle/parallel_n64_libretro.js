@@ -10428,7 +10428,7 @@ function _glUseProgram(program) {
     program = program ? GL.programs[program] : null;
     GLctx.useProgram(program);
 
-    if (program && program.hacked && frameData) {
+    if (program && program.hacked && Module.vr) {
       modelViewLocation = GLctx.getUniformLocation(program, 'modelView');
       projectionLocation = GLctx.getUniformLocation(program, 'projection');
       // console.log('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nhhhhhhhhhhhhhhhhhhhhhhhack', uniformLocation, '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n');
