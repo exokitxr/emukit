@@ -1182,9 +1182,6 @@ function _emscripten_set_main_loop(func, fps, simulateInfiniteLoop, arg, noSetTi
         throw "SimulateInfiniteLoop"
     }
 }
-let display = null;
-let leftEyeParameters = null;
-let rightEyeParameters = null;
 const frameData = typeof window.VRFrameData !== 'undefined' ? new window.VRFrameData() : null;
 var Browser = {
     mainLoop: {
@@ -1523,11 +1520,9 @@ var Browser = {
         setTimeout(func, delay)
     }),
     requestAnimationFrame: function requestAnimationFrame(func) {
-        // console.log('raf', display && display.constructor.name);
-
-        if (display) {
-          display.requestAnimationFrame(function() {
-            display.getFrameData(frameData);
+        if (Module.display) {
+          Module.display.requestAnimationFrame(function() {
+            Module.display.getFrameData(frameData);
 
             func.apply(this, arguments);
 
@@ -2224,7 +2219,7 @@ var GL = {
                     throw "Unsupported WebGL context version " + majorVersion + "." + minorVersion + "!"
                 }
 
-                navigator.getVRDisplays && navigator.getVRDisplays()
+                /* navigator.getVRDisplays && navigator.getVRDisplays()
                   .then(displays => {
                     const firstDisplay = displays[0];
                     return firstDisplay.requestPresent([{
@@ -2243,7 +2238,7 @@ var GL = {
                   })
                   .catch(err => {
                     console.warn(err.stack);
-                  });
+                  }); */
             } finally {
                 canvas.removeEventListener("webglcontextcreationerror", onContextCreationError, false)
             }
@@ -9933,6 +9928,7 @@ function _glDrawArrays(mode, first, count) {
     // left
     GL.preDrawHandleClientVertexAttribBindings(first + count);
 
+    const {leftEyeParameters} = Module;
     if (leftEyeParameters) {
       GLctx.viewport(0, 0, leftEyeParameters.renderWidth, leftEyeParameters.renderHeight);
     }
@@ -9945,6 +9941,7 @@ function _glDrawArrays(mode, first, count) {
     GL.postDrawHandleClientVertexAttribBindings()
   
     // right
+    const {rightEyeParameters} = Module;
     if (rightEyeParameters && rightEyeParameters.renderWidth > 0) {
       GL.preDrawHandleClientVertexAttribBindings(first + count);
       if (leftEyeParameters && rightEyeParameters) {

@@ -16,60 +16,11 @@
    <link rel="shortcut icon" href="https://web.libretro.com/media/retroarch.ico" />
 </head>
 <body>
-   <!--Navbar-->
-   <nav class="navbar navbar-dark bg-primary">
-     <div class="container">
-           <!--navbar content-->
-           <div class="navbar-toggleable-xs">
-
-               <!--Links-->
-               <ul class="nav navbar-nav">
-                  <div class="dropdown">
-                  <li class="nav-item dropdown">
-                        <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Core Selection</button>
-                        <div class="dropdown-menu dropdown-primary" aria-labelledby="dropdownMenu1" data-dropdown-in="fadeIn" data-dropdown-out="fadeOut" id="core-selector">
-                          <a class="dropdown-item" href="." data-core="fceumm">FCEUmm</a>
-                          <a class="dropdown-item" href="." data-core="gambatte">Gambatte</a>
-                          <a class="dropdown-item" href="." data-core="genesis_plus_gx">Genesis Plus GX</a>
-                          <a class="dropdown-item" href="." data-core="nestopia">Nestopia (NES)</a>
-                          <a class="dropdown-item" href="." data-core="snes9x2010">Snes9x 2010 (SNES)</a>
-                          <a class="dropdown-item" href="." data-core="vba_next">VBA Next (Gameboy Advance)</a>
-                          <a class="dropdown-item" href="." data-core="mednafen_pcfx">Mednafen PCFX</a>
-                          <a class="dropdown-item" href="." data-core="parallel_n64">Parallel N64</a>
-                        </div>
-                        <button class="btn btn-primary disabled" id="btnRun" onclick="startRetroArch()" disabled>
-                           <span class="fa fa-spinner fa-spin" id="icnRun"></span> Run
-                        </button>
-
-                        <button class="btn btn-primary disabled" id="btnAdd" onclick="document.getElementById('btnRom').click()" disabled>
-                           <span class="fa fa-plus" id="icnAdd"></span> Add Content
-                        </button>
-
-                        <button class="btn btn-primary tooltip-enable" id="btnClean" onclick="cleanupStorage();" title="Cleanup storage">
-                           <span class="fa fa-trash-o" id="icnClean"></span> <span class="sr-only">Cleanup</span>
-                        </button>
-
-                        <input class="btn btn-primary disabled" style="display: none" type="file" id="btnRom" name="upload" onclick="document.getElementById('btnAdd').click();" onchange="selectFiles(event.target.files)" multiple />
-                        <button class="btn btn-primary disabled tooltip-enable" id="btnMenu" onclick="keyPress(112);" title="Menu toggle" disabled>
-                           <span class="fa fa-bars" id="btnMenu"></span> <span class="sr-only">Menu</span>
-                        </button>
-
-                        <button class="btn btn-primary disabled tooltip-enable" id="btnFullscreen" onclick="Module.requestFullScreen()" title="Fullscreen" disabled>
-                           <span class="fa fa-desktop" id="icnAdd"></span> <span class="sr-only">Fullscreen</span>
-                        </button>
-
-                   </li>
-                </div>
-               </ul>
-           </div>
-           <!--/.navbar content-->
-       </div>
-   </nav>
    <div class="bg-inverse webplayer-container">
       <div class="container">
          <div class="webplayer_border text-xs-center" id="canvas_div">
-            <canvas class="webplayer" id="canvas" tabindex="1" oncontextmenu="event.preventDefault()" style="display: none"></canvas>
-            <img class="webplayer-preview img-fluid" src="media/canvas.png" width="960px" height="720px" alt="RetroArch Logo">
+            <canvas class="webplayer" id="canvas" tabindex="1" oncontextmenu="event.preventDefault()"></canvas>
+            <!-- <img class="webplayer-preview img-fluid" src="media/canvas.png" width="960px" height="720px" alt="RetroArch Logo"> -->
          </div>
       </div>
    </div>

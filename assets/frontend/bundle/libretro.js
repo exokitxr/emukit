@@ -4,7 +4,6 @@
  * This provides the basic JavaScript for the RetroArch web player.
  */
 var BrowserFS = BrowserFS;
-var afs;
 
 function cleanupStorage() {
     localStorage.clear();
@@ -24,60 +23,7 @@ function cleanupStorage() {
     document.getElementById("btnClean").disabled = true;
 }
 
-function idbfsInit() {
-    $('#icnLocal').removeClass('fa-globe');
-    $('#icnLocal').addClass('fa-spinner fa-spin');
-    // var imfs = new BrowserFS.FileSystem.InMemory();
-    if (BrowserFS.FileSystem.IndexedDB.isAvailable() && false) {
-        afs = new BrowserFS.FileSystem.AsyncMirror(imfs,
-            new BrowserFS.FileSystem.IndexedDB(function(e, fs) {
-                    if (e) {
-                        //fallback to imfs
-                        afs = new BrowserFS.FileSystem.InMemory();
-                        console.log("WEBPLAYER: error: " + e + " falling back to in-memory filesystem");
-                        setupFileSystem("browser")
-                            .then(() => {
-                                preLoadingComplete();
-                            });
-                    } else {
-                        // initialize afs by copying files from async storage to sync storage.
-                        afs.initialize(function(e) {
-                            if (e) {
-                                afs = new BrowserFS.FileSystem.InMemory();
-                                console.log("WEBPLAYER: error: " + e + " falling back to in-memory filesystem");
-                                setupFileSystem("browser")
-                                    .then(() => {
-                                        preLoadingComplete();
-                                    });
-                            } else {
-                                idbfsSyncComplete();
-                            }
-                        });
-                    }
-                },
-                "RetroArch"));
-    } else {
-        afs = new BrowserFS.FileSystem.InMemory();
-        setupFileSystem("browser")
-            .then(() => {
-                preLoadingComplete();
-            });
-    }
-}
-
-function idbfsSyncComplete() {
-    $('#icnLocal').removeClass('fa-spinner').removeClass('fa-spin');
-    $('#icnLocal').addClass('fa-check');
-    console.log("WEBPLAYER: idbfs setup successful");
-
-    setupFileSystem("browser")
-        .then(() => {
-            preLoadingComplete();
-        });
-}
-
-function preLoadingComplete() {
-    /* Make the Preview image clickable to start RetroArch. */
+/* function preLoadingComplete() {
     $('.webplayer-preview').addClass('loaded').click(function() {
         startRetroArch();
         return false;
@@ -90,103 +36,87 @@ function preLoadingComplete() {
     document.getElementById("btnRun").disabled = true;
 
     bootstrapScene();
-}
+} */
 
 function setupFileSystem(backend) {
-    return Promise.all([
-            fetch('/assets/frontend/bundle/.index-xhr').then(res => res.json()),
-            fetch('/assets/cores/.index-xhr').then(res => res.json()),
-            fetch('/assets/frontend/bundle/retroarch.cfg').then(res => res.arrayBuffer()),
-            // fetch('/assets/cores/sonic3.md').then(res => res.arrayBuffer()),
-            // fetch('/assets/cores/oot.z64').then(res => res.arrayBuffer()),
-            fetch('/assets/cores/majora.z64').then(res => res.arrayBuffer()),
-            // fetch('/assets/cores/starfox.z64').then(res => res.arrayBuffer()),
-        ])
-        .then(xhrs => {
-            /* create a mountable filesystem that will server as a root
-               mountpoint for browserfs */
-            var mfs = new BrowserFS.FileSystem.MountableFileSystem();
+  return Promise.all([
+    fetch('/assets/frontend/bundle/.index-xhr').then(res => res.json()),
+    fetch('/assets/cores/.index-xhr').then(res => res.json()),
+    fetch('/assets/frontend/bundle/retroarch.cfg').then(res => res.arrayBuffer()),
+    // fetch('/assets/cores/sonic3.md').then(res => res.arrayBuffer()),
+    // fetch('/assets/cores/oot.z64').then(res => res.arrayBuffer()),
+    // fetch('/assets/cores/majora.z64').then(res => res.arrayBuffer()),
+    // fetch('/assets/cores/starfox.z64').then(res => res.arrayBuffer()),
+  ])
+  .then(xhrs => {
+    /* create a mountable filesystem that will server as a root
+       mountpoint for browserfs */
+    var mfs = new BrowserFS.FileSystem.MountableFileSystem();
+    var afs = new BrowserFS.FileSystem.InMemory();
+    var xfs = new BrowserFS.FileSystem.XmlHttpRequest(xhrs[0], "/assets/frontend/bundle/");
 
-            /* create an XmlHttpRequest filesystem for the bundled data */
-            var xfs1 = new BrowserFS.FileSystem.XmlHttpRequest(xhrs[0], "/assets/frontend/bundle/");
-            /* create an XmlHttpRequest filesystem for core assets */
-            /* var xfs2 =  new BrowserFS.FileSystem.XmlHttpRequest
-               (xhrs[1], "/assets/cores/"); */
-            /* const xfs2 = new BrowserFS.FileSystem.InMemory();
-            (() => {
-              // const f = m.createFileSync('/sonic3.md', 'r+', 0777);
-              // const f = m.createFileSync('/oot.z64', 'r+', 0777);
-              const f = xfs2.createFileSync('/majora.z64', 'r+', 0777);
-              // const f = m.createFileSync('/starfox.z64', 'r+', 0777);
-              f._buffer = f._buffer.constructor.from(xhrs[3]);
-              f.getStats().size = f._buffer.byteLength;
-              f._dirty = true;
-              f.syncSync();
-              // m.readFileSync('/lol/zol', 'utf8', {isReadable() {return true;}, pathExistsAction() { return 0; }});
-            })(); */
-            console.log("WEBPLAYER: initializing filesystem: " + backend);
-            mfs.mount('/home/web_user/retroarch/userdata', afs);
+    console.log("WEBPLAYER: initializing filesystem: " + backend);
+    mfs.mount('/home/web_user/retroarch/userdata', afs);
 
-            mfs.mount('/home/web_user/retroarch/bundle', xfs1);
-            // mfs.mount('/home/web_user/retroarch/userdata/content/downloads', xfs2);
-            // mfs.mount('/home/web_user/retroarch/userdata/content/downloads', xfs3);
-            BrowserFS.initialize(mfs);
-            var BFS = new BrowserFS.EmscriptenFS();
-            FS.mount(BFS, {
-                root: '/home'
-            }, '/home');
-            console.log("WEBPLAYER: " + backend + " filesystem initialization successful");
+    mfs.mount('/home/web_user/retroarch/bundle', xfs);
+    BrowserFS.initialize(mfs);
+    var BFS = new BrowserFS.EmscriptenFS();
+    FS.mount(BFS, {
+      root: '/home'
+    }, '/home');
+    console.log("WEBPLAYER: " + backend + " filesystem initialization successful");
 
-            (() => {
-                const name = 'retroarch.cfg';
-                const dataView = new Uint8Array(xhrs[2]);
-                FS.createDataFile('/', name, dataView, true, false);
+    (() => {
+        const name = 'retroarch.cfg';
+        const dataView = new Uint8Array(xhrs[2]);
+        FS.createDataFile('/', name, dataView, true, false);
 
-                const data = FS.readFile(name, {
-                    encoding: 'binary'
-                });
-                FS.writeFile('/home/web_user/retroarch/userdata/' + name, data, {
-                    encoding: 'binary'
-                });
-                FS.unlink(name);
-            })();
-            (() => {
-                const name = 'majora.z64';
-                const dataView = new Uint8Array(xhrs[3]);
-                FS.createDataFile('/', name, dataView, true, false);
-
-                const data = FS.readFile(name, {
-                    encoding: 'binary'
-                });
-                FS.mkdir('/home/web_user/retroarch/userdata/states');
-                FS.mkdir('/home/web_user/retroarch/userdata/content');
-                FS.mkdir('/home/web_user/retroarch/userdata/content/downloads');
-                FS.writeFile('/home/web_user/retroarch/userdata/content/downloads/' + name, data, {
-                    encoding: 'binary'
-                });
-                FS.unlink(name);
-            })();
+        const data = FS.readFile(name, {
+            encoding: 'binary'
         });
+        FS.writeFile('/home/web_user/retroarch/userdata/' + name, data, {
+            encoding: 'binary'
+        });
+        FS.unlink(name);
+    })();
+
+    // FS.mkdir('/home/web_user/retroarch/userdata/states');
+    FS.mkdir('/home/web_user/retroarch/userdata/content');
+    FS.mkdir('/home/web_user/retroarch/userdata/content/downloads');
+
+    /* (() => {
+        const name = 'majora.z64';
+        const dataView = new Uint8Array(xhrs[3]);
+        FS.createDataFile('/', name, dataView, true, false);
+
+        const data = FS.readFile(name, {
+            encoding: 'binary'
+        });
+        FS.mkdir('/home/web_user/retroarch/userdata/states');
+        FS.mkdir('/home/web_user/retroarch/userdata/content');
+        FS.mkdir('/home/web_user/retroarch/userdata/content/downloads');
+        FS.writeFile('/home/web_user/retroarch/userdata/content/downloads/' + name, data, {
+            encoding: 'binary'
+        });
+        FS.unlink(name);
+    })(); */
+  });
 }
 
 var renderScene = null;
 var renderer = null;
 function bootstrapScene() {
-  const canvas = document.getElementById('canvas');
-
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  // const context = canvas.getContext('webgl');
-  const context = Browser.createContext(canvas, true, true, {
+  /* const context = Browser.createContext(canvas, true, true, {
     antialias: true,
     depth: true,
     stencil: true,
     alpha: false,
-  });
+  }); */
 
   if (navigator.xr) {
     delete navigator.xr;
   }
+  const {canvas, ctx: context} = Module;
   renderer = new THREE.WebGLRenderer({
     canvas,
     context,
@@ -883,13 +813,36 @@ function bootstrapScene() {
         cleared = false;
       }
     };
-    renderScene();
+    // renderScene();
+
+    navigator.getVRDisplays && navigator.getVRDisplays()
+      .then(displays => {
+        const display = displays[0];
+        return display.requestPresent([{
+          source: canvas,
+        }])
+          .then(() => {
+            renderer.vr.setDevice(display);
+            renderer.vr.enabled = true;
+
+            const leftEyeParameters = display.getEyeParameters('left');
+            const rightEyeParameters = display.getEyeParameters('right');
+            Browser.setCanvasSize(leftEyeParameters.renderWidth + rightEyeParameters.renderWidth, Math.max(leftEyeParameters.renderHeight, rightEyeParameters.renderHeight));
+
+            Module.display = display;
+            Module.leftEyeParameters = leftEyeParameters;
+            Module.rightEyeParameters = rightEyeParameters;
+          });
+      })
+      .catch(err => {
+        console.warn(err.stack);
+      });
 }
 
 /**
  * Retrieve the value of the given GET parameter.
  */
-function getParam(name) {
+/* function getParam(name) {
     var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
     if (results) {
         return results[1] || null;
@@ -897,6 +850,7 @@ function getParam(name) {
 }
 
 function startRetroArch() {
+  throw new Error('lol');
     $('.webplayer').show();
     $('.webplayer-preview').hide();
     document.getElementById("btnRun").disabled = true;
@@ -913,7 +867,7 @@ function startRetroArch() {
 
     Module['callMain'](Module['arguments']);
     document.getElementById('canvas').focus();
-}
+} */
 
 function selectFiles(files) {
     $('#btnAdd').addClass('disabled');
@@ -939,39 +893,70 @@ function selectFiles(files) {
     }
 }
 
-function uploadData(data, name) {
-    var dataView = new Uint8Array(data);
-    FS.createDataFile('/', name, dataView, true, false);
+function _getCoreNameForFileName(fileName) {
+  const match = fileName.match(/\.([^\.]+)$/);
+  const ext = match ? match[1] : '';
+  switch (ext) {
+    case 'md':
+      return 'genesis_plus_gx';
+    case 'n64':
+    case 'z64':
+      return 'parallel_n64';
+    default: return null;
+  }
+}
+Error.stackTraceLimit = 200;
+function uploadData(fileData, fileName) {
+  const core = _getCoreNameForFileName(fileName);
+  if (core) {
+    $.getScript(core + '_libretro.js', () => {
+      setupFileSystem("browser")
+        .then(() => {
+          const dataView = new Uint8Array(fileData);
+          FS.createDataFile('/', fileName, dataView, true, false);
 
-    var data = FS.readFile(name, {
-        encoding: 'binary'
+          const data = FS.readFile(fileName, {
+            encoding: 'binary'
+          });
+          const filePath = '/home/web_user/retroarch/userdata/content/' + fileName;
+          FS.writeFile('/home/web_user/retroarch/userdata/content/' + fileName, data, {
+            encoding: 'binary'
+          });
+          FS.unlink(fileName);
+
+          const handle = GL.registerContext(Module.ctx, {
+            majorVersion: 1,
+            minorVersion: 0,
+          });
+          GL.makeContextCurrent(handle);
+          Module.arguments.push(filePath);
+
+          bootstrapScene();
+        });
     });
-    FS.writeFile('/home/web_user/retroarch/userdata/content/' + name, data, {
-        encoding: 'binary'
-    });
-    FS.unlink(name);
+  } else {
+    console.warn('could not detect file file for', fileName);
+  }
 }
 
 window.addEventListener('dragover', e => {
     e.preventDefault();
 });
 window.addEventListener('drop', e => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const {
-        files
-    } = e.dataTransfer;
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const fr = new FileReader();
-        fr.onload = () => {
-            uploadData(fr.result, file.name);
-        };
-        fr.onerror = err => {
-            console.warn(err.stack);
-        };
-        fr.readAsArrayBuffer(file);
-    }
+  const {files} = e.dataTransfer;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const fr = new FileReader();
+    fr.onload = () => {
+      uploadData(fr.result, file.name);
+    };
+    fr.onerror = err => {
+      console.warn(err.stack);
+    };
+    fr.readAsArrayBuffer(file);
+  }
 });
 
 var Module = {
@@ -980,7 +965,7 @@ var Module = {
         '-v',
         // '/home/web_user/retroarch/userdata/content/downloads/sonic3.md',
         // '/home/web_user/retroarch/userdata/content/downloads/oot.z64',
-        '/home/web_user/retroarch/userdata/content/downloads/majora.z64',
+        // '/home/web_user/retroarch/userdata/content/downloads/majora.z64',
         // '/home/web_user/retroarch/userdata/content/downloads/starfox.z64',
     ],
     preRun: [],
@@ -992,98 +977,60 @@ var Module = {
         console.log(text);
     },
     canvas: document.getElementById('canvas'),
+    context: null,
+    display: null,
+    leftEyeParameters: null,
+    rightEyeParameters: null,
     totalDependencies: 0,
     monitorRunDependencies: function(left) {
         this.totalDependencies = Math.max(this.totalDependencies, left);
     }
 };
 
-function switchCore(corename) {
-    localStorage.setItem("core", corename);
-}
-
-function switchStorage(backend) {
-    if (backend != localStorage.getItem("backend")) {
-        localStorage.setItem("backend", backend);
-        location.reload();
+window.onload = () => {
+  /**
+   * Attempt to disable some default browser keys.
+   */
+  const keys = {
+    9: "tab",
+    13: "enter",
+    16: "shift",
+    18: "alt",
+    27: "esc",
+    33: "rePag",
+    34: "avPag",
+    35: "end",
+    36: "home",
+    37: "left",
+    38: "up",
+    39: "right",
+    40: "down",
+    112: "F1",
+    113: "F2",
+    114: "F3",
+    115: "F4",
+    116: "F5",
+    117: "F6",
+    118: "F7",
+    119: "F8",
+    120: "F9",
+    121: "F10",
+    122: "F11",
+    123: "F12"
+  };
+  window.addEventListener('keydown', function(e) {
+    if (keys[e.which]) {
+      e.preventDefault();
     }
-}
+  });
 
-// When the browser has loaded everything.
-$(function() {
-    // Enable all available ToolTips.
-    $('.tooltip-enable').tooltip({
-        placement: 'right'
-    });
-
-    // Allow hiding the top menu.
-    $('.showMenu').hide();
-    $('#btnHideMenu, .showMenu').click(function() {
-        $('nav').slideToggle('slow');
-        $('.showMenu').toggle('slow');
-    });
-
-    /**
-     * Attempt to disable some default browser keys.
-     */
-    var keys = {
-        9: "tab",
-        13: "enter",
-        16: "shift",
-        18: "alt",
-        27: "esc",
-        33: "rePag",
-        34: "avPag",
-        35: "end",
-        36: "home",
-        37: "left",
-        38: "up",
-        39: "right",
-        40: "down",
-        112: "F1",
-        113: "F2",
-        114: "F3",
-        115: "F4",
-        116: "F5",
-        117: "F6",
-        118: "F7",
-        119: "F8",
-        120: "F9",
-        121: "F10",
-        122: "F11",
-        123: "F12"
-    };
-    window.addEventListener('keydown', function(e) {
-        if (keys[e.which]) {
-            e.preventDefault();
-        }
-    });
-
-    // Switch the core when selecting one.
-    $('#core-selector a').click(function() {
-        var coreChoice = $(this).data('core');
-        switchCore(coreChoice);
-    });
-
-    // Find which core to load.
-    var core = localStorage.getItem("core", core);
-    if (!core) {
-        // core = 'genesis_plus_gx';
-        core = 'parallel_n64';
-    }
-    // Make the core the selected core in the UI.
-    var coreTitle = $('#core-selector a[data-core="' + core + '"]').addClass('active').text();
-    $('#dropdownMenu1').text(coreTitle);
-
-    // Load the Core's related JavaScript.
-    $.getScript(core + '_libretro.js', function() {
-        $('#icnRun').removeClass('fa-spinner').removeClass('fa-spin');
-        $('#icnRun').addClass('fa-play');
-        $('#lblDrop').removeClass('active');
-        $('#lblLocal').addClass('active');
-        idbfsInit();
-    });
-});
+  const {canvas} = Module;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  Module.ctx = canvas.getContext('webgl', {
+    antialias: true,
+  });
+};
 
 function keyPress(k) {
     kp(k, "keydown");
