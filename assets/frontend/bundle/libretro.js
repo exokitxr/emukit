@@ -490,6 +490,7 @@ function bootstrapScene() {
       scene.add(gamepadMeshes[i]);
     }
 
+    const sqrt2 = Math.sqrt(2);
     const DIRECTIONS = [
       {
         direction: 'left',
@@ -510,6 +511,26 @@ function bootstrapScene() {
         direction: 'down',
         x: 0,
         y: -1,
+      },
+      {
+        direction: 'upLeft',
+        x: -sqrt2,
+        y: sqrt2,
+      },
+      {
+        direction: 'upRight',
+        x: sqrt2,
+        y: sqrt2,
+      },
+      {
+        direction: 'downLeft',
+        x: -sqrt2,
+        y: -sqrt2,
+      },
+      {
+        direction: 'downRight',
+        x: sqrt2,
+        y: -sqrt2,
       },
     ];
     const LEFT_PAD_KEYS = {
@@ -577,7 +598,15 @@ function bootstrapScene() {
           code: 'KeyK',
         },
       ],
+      upLeft: null,
+      upRight: null,
+      downLeft: null,
+      downRight: null,
     };
+    LEFT_PAD_KEYS.upLeft = LEFT_PAD_KEYS.up.concat(LEFT_PAD_KEYS.left);
+    LEFT_PAD_KEYS.upRight = LEFT_PAD_KEYS.up.concat(LEFT_PAD_KEYS.right);
+    LEFT_PAD_KEYS.downLeft = LEFT_PAD_KEYS.down.concat(LEFT_PAD_KEYS.left);
+    LEFT_PAD_KEYS.downRight = LEFT_PAD_KEYS.down.concat(LEFT_PAD_KEYS.right);
     const RIGHT_PAD_KEYS = {
       left: [
         {
@@ -615,7 +644,15 @@ function bootstrapScene() {
           code: 'Digit2',
         },
       ],
+      upLeft: null,
+      upRight: null,
+      downLeft: null,
+      downRight: null,
     };
+    RIGHT_PAD_KEYS.upLeft = RIGHT_PAD_KEYS.up.concat(RIGHT_PAD_KEYS.left);
+    RIGHT_PAD_KEYS.upRight = RIGHT_PAD_KEYS.up.concat(RIGHT_PAD_KEYS.right);
+    RIGHT_PAD_KEYS.downLeft = RIGHT_PAD_KEYS.down.concat(RIGHT_PAD_KEYS.left);
+    RIGHT_PAD_KEYS.downRight = RIGHT_PAD_KEYS.down.concat(RIGHT_PAD_KEYS.right);
     const PAD_KEYS = [
       LEFT_PAD_KEYS,
       RIGHT_PAD_KEYS,
