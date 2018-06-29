@@ -7223,6 +7223,7 @@ var JSEvents = {
     previousScreenY: null,
     removeEventListenersRegistered: false,
     staticInit: (function() {
+      return;
         if (typeof window !== "undefined") {
             window.addEventListener("gamepadconnected", (function() {
                 ++JSEvents.numGamepadsConnected
