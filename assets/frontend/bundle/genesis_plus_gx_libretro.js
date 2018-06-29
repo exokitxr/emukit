@@ -1767,7 +1767,8 @@ var RA = {
     bufIndex: 0,
     bufOffset: 0,
     startTime: 0,
-    nonblock: false,
+    // nonblock: false,
+    nonblock: true,
     currentTimeWorkaround: false,
     setStartTime: (function() {
         if (RA.context.currentTime) {
@@ -1876,6 +1877,7 @@ function _RWebAudioStop() {
 }
 
 function _RWebAudioWrite(buf, size) {
+    return 0; // XXX
     RA.process();
     var samples = size / 8;
     var count = 0;
