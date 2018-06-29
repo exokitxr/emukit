@@ -1182,6 +1182,10 @@ function _emscripten_set_main_loop(func, fps, simulateInfiniteLoop, arg, noSetTi
         throw "SimulateInfiniteLoop"
     }
 }
+let display = null;
+let leftEyeParameters = null;
+let rightEyeParameters = null;
+const frameData = typeof window.VRFrameData !== 'undefined' ? new window.VRFrameData() : null;
 var Browser = {
     mainLoop: {
         scheduler: null,
@@ -1519,7 +1523,23 @@ var Browser = {
         setTimeout(func, delay)
     }),
     requestAnimationFrame: function requestAnimationFrame(func) {
-        if (typeof window === "undefined") {
+        // console.log('raf', display && display.constructor.name);
+
+        if (display) {
+          display.requestAnimationFrame(function() {
+            display.getFrameData(frameData);
+
+            /* new THREE.Matrix4().fromArray(frameData.leftProjectionMatrix)
+              .multiply(new THREE.Matrix4().fromArray(frameData.leftViewMatrix)) */
+            // new THREE.Matrix4().fromArray(frameData.leftViewMatrix)
+              // .toArray(hackMatrix);
+            // hackMatrix.set(frameData.leftViewMatrix);
+
+            func.apply(this, arguments);
+
+            display.submitFrame();
+          });
+        } else if (typeof window === "undefined") {
             Browser.fakeRequestAnimationFrame(func)
         } else {
             if (!window.requestAnimationFrame) {
@@ -2199,6 +2219,24 @@ var GL = {
                 } else {
                     throw "Unsupported WebGL context version " + majorVersion + "." + minorVersion + "!"
                 }
+
+                navigator.getVRDisplays && navigator.getVRDisplays()
+                  .then(displays => {
+                    const firstDisplay = displays[0];
+                    return firstDisplay.requestPresent([{
+                      source: canvas,
+                    }])
+                      .then(() => {
+                        display = firstDisplay;
+
+                        leftEyeParameters = display.getEyeParameters('left');
+                        rightEyeParameters = display.getEyeParameters('right');
+                        Browser.setCanvasSize(leftEyeParameters.renderWidth + rightEyeParameters.renderWidth, Math.max(leftEyeParameters.renderHeight, rightEyeParameters.renderHeight));
+                      });
+                  })
+                  .catch(err => {
+                    console.warn(err.stack);
+                  });
             } finally {
                 canvas.removeEventListener("webglcontextcreationerror", onContextCreationError, false)
             }
@@ -8114,8 +8152,16 @@ function _emscripten_glActiveTexture(x0) {
     GLctx["activeTexture"](x0)
 }
 
+const hackedPrograms = [];
 function _emscripten_glAttachShader(program, shader) {
-    GLctx.attachShader(GL.programs[program], GL.shaders[shader])
+    throw new Error('fail');
+    /* GL.programs[program].hacked |= !!GL.shaders[shader].hacked;
+    GL.programs[program].shaders = GL.programs[program].shaders || [];
+    GL.programs[program].shaders.push(GL.shaders[shader]);
+    if (GL.programs[program].hacked && !hackedPrograms.includes(GL.programs[program])) {
+      hackedPrograms.push(GL.programs[program]);
+    }
+    GLctx.attachShader(GL.programs[program], GL.shaders[shader]) */
 }
 
 function _emscripten_glBindAttribLocation(program, index, name) {
@@ -8378,13 +8424,15 @@ function _emscripten_glDisableVertexAttribArray(index) {
 }
 
 function _emscripten_glDrawArrays(mode, first, count) {
-    GL.preDrawHandleClientVertexAttribBindings(first + count);
+    throw new Error('fail');
+    /* GL.preDrawHandleClientVertexAttribBindings(first + count);
     GLctx.drawArrays(mode, first, count);
-    GL.postDrawHandleClientVertexAttribBindings()
+    GL.postDrawHandleClientVertexAttribBindings() */
 }
 
 function _emscripten_glDrawArraysInstanced(mode, first, count, primcount) {
-    GLctx["drawArraysInstanced"](mode, first, count, primcount)
+    throw new Error('fail');
+    // GLctx["drawArraysInstanced"](mode, first, count, primcount)
 }
 
 function _emscripten_glDrawBuffers(n, bufs) {
@@ -8396,7 +8444,8 @@ function _emscripten_glDrawBuffers(n, bufs) {
 }
 
 function _emscripten_glDrawElements(mode, count, type, indices) {
-    var buf;
+    throw new Error('fail');
+    /* var buf;
     if (!GL.currElementArrayBuffer) {
         var size = GL.calcBufLength(1, type, 0, count);
         buf = GL.getTempIndexBuffer(size);
@@ -8409,7 +8458,7 @@ function _emscripten_glDrawElements(mode, count, type, indices) {
     GL.postDrawHandleClientVertexAttribBindings(count);
     if (!GL.currElementArrayBuffer) {
         GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, null)
-    }
+    } */
 }
 
 function _emscripten_glDrawElementsInstanced(mode, count, type, indices, primcount) {
@@ -9141,9 +9190,63 @@ function _emscripten_glShaderBinary() {
     GL.recordError(1280)
 }
 
+function hackVertexShader(shader, source) {
+  if (shader.type === 35633 && !shader.hacked) {
+    if (/gl_Position;/.test(source)) {
+      throw new Error('failed');
+    }
+
+    source = source
+      .replace(/(void main\(\))/, 'uniform mat4 modelView;uniform mat4 projection;\n$1')
+
+    source = source
+      .replace(/(gl_Position\.x\s*=[\s\S]*gl_Position\s*\/=\s*q;)/, `\
+        gl_Position.x = (aPosition.x - vertexOffset.x) / vertexOffset.x;
+        gl_Position.y = invertY *-(aPosition.y - vertexOffset.y) / vertexOffset.y;
+        gl_Position.z = aPosition.z / Z_MAX;
+        gl_Position.w = 1.0;
+        gl_Position.z = -abs(gl_Position.z);
+        gl_Position.xyz /= q;
+        gl_Position.xyz /= 100.0;
+        gl_Position.y += 1;
+        gl_Position.z *= 1.5;
+        gl_Position.z += 1.0;
+        gl_Position = modelView * gl_Position;
+        gl_Position = projection * gl_Position;
+        gl_Position;
+      `);
+
+    /* source = source
+      .replace(/(gl_Position\s*=\s*.+?;)/, 'gl_Position.z -= 10.0;gl_Position.z *= 65536.0;$1'); */
+
+    /* source = source
+      .replace(/(gl_Position \/= q;)/, ''); */
+
+    /* const replacement = '$1' +
+      // (shader.id === 31 ? 'gl_Position.y -= 30.0;' : '') +
+      'gl_Position = modelView * gl_Position;' +
+      // 'gl_Position.z -= 2.0;' +
+      //'gl_Position.z *= 2.0;' +
+      'gl_Position = projection * gl_Position;';
+
+    source = source
+      .replace(/(void main\(\))/, 'uniform mat4 modelView;uniform mat4 projection;\n$1')
+      .replace(/(gl_Position\s*\/=\s*.+?;)/, replacement)
+      // .replace(/(gl_Position\s*=\s*.+?;)/, replacement)
+      .replace(/(gl_Position;)/, replacement) */
+
+    shader.hacked = true;
+  }
+
+  return source;
+}
+
 function _emscripten_glShaderSource(shader, count, string, length) {
-    var source = GL.getSource(shader, count, string, length);
-    GLctx.shaderSource(GL.shaders[shader], source)
+    throw new Error('fail');
+    /* var source = GL.getSource(shader, count, string, length);
+    source = hackVertexShader(GL.shaders[shader], source);
+    GL.shaders[shader].source = source;
+    GLctx.shaderSource(GL.shaders[shader], source) */
 }
 
 function _emscripten_glStencilFunc(x0, x1, x2) {
@@ -9377,7 +9480,16 @@ function _emscripten_glUniformMatrix4fv(location, count, transpose, value) {
 }
 
 function _emscripten_glUseProgram(program) {
-    GLctx.useProgram(program ? GL.programs[program] : null)
+    throw new Error('fail');
+
+    /* program = program ? GL.programs[program] : null;
+    GLctx.useProgram(program);
+
+    if (program && program.hacked) {
+      const uniformLocation = GLctx.getUniformLocation(program, 'modelView');
+      console.log('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nhhhhhhhhhhhhhhhhhhhhhhhack', uniformLocation, '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n');
+      GLctx.uniformMatrix4fv(uniformLocation, false, hackMatrix);
+    } */
 }
 
 function _emscripten_glValidateProgram(program) {
@@ -9440,7 +9552,8 @@ function _emscripten_glVertexPointer() {
 }
 
 function _emscripten_glViewport(x0, x1, x2, x3) {
-    GLctx["viewport"](x0, x1, x2, x3)
+    throw new Error('fail');
+    // GLctx["viewport"](x0, x1, x2, x3)
 }
 
 function _emscripten_request_pointerlock(target, deferUntilInEventHandler) {
@@ -9620,6 +9733,18 @@ function _glActiveTexture(x0) {
 }
 
 function _glAttachShader(program, shader) {
+    GL.programs[program].hacked |= !!GL.shaders[shader].hacked;
+    GL.programs[program].shaders = GL.programs[program].shaders || [];
+    GL.programs[program].shaders.push(GL.shaders[shader]);
+    if (GL.programs[program].hacked && !hackedPrograms.includes(GL.programs[program])) {
+      hackedPrograms.push(GL.programs[program]);
+      // console.log('programs', hackedPrograms.map(p => p.id));
+    }
+    if (GL.programs[program].id === 48) {
+      const ids = GL.programs[program].shaders.map(s => s.id);
+      const sources = GL.programs[program].shaders.map(s => s.source);
+      console.log('load shaders', ids, '\n// VERTEX\n', sources[0], '\n// FRAGMENT\n', sources[1]);
+    }
     GLctx.attachShader(GL.programs[program], GL.shaders[shader])
 }
 
@@ -9784,7 +9909,9 @@ function _glDepthRangef(x0, x1) {
 }
 
 function _glDisable(x0) {
+  if (x0 !== GLctx.DEPTH_TEST) {
     GLctx["disable"](x0)
+  }
 }
 
 function _glDisableVertexAttribArray(index) {
@@ -9794,13 +9921,38 @@ function _glDisableVertexAttribArray(index) {
 }
 
 function _glDrawArrays(mode, first, count) {
+    // left
     GL.preDrawHandleClientVertexAttribBindings(first + count);
+
+    if (leftEyeParameters) {
+      GLctx.viewport(0, 0, leftEyeParameters.renderWidth, leftEyeParameters.renderHeight);
+    }
+    GLctx.disable(GLctx.SCISSOR_TEST);
+    if (hackedProgram) {
+      GLctx.uniformMatrix4fv(modelViewLocation, false, frameData.leftViewMatrix);
+      GLctx.uniformMatrix4fv(projectionLocation, false, frameData.leftProjectionMatrix);
+    }
     GLctx.drawArrays(mode, first, count);
     GL.postDrawHandleClientVertexAttribBindings()
+  
+    // right
+    if (rightEyeParameters && rightEyeParameters.renderWidth > 0) {
+      GL.preDrawHandleClientVertexAttribBindings(first + count);
+      if (leftEyeParameters && rightEyeParameters) {
+        GLctx.viewport(leftEyeParameters.renderWidth, 0, rightEyeParameters.renderWidth, rightEyeParameters.renderHeight);
+      }
+      if (hackedProgram) {
+        GLctx.uniformMatrix4fv(modelViewLocation, false, frameData.rightViewMatrix);
+        GLctx.uniformMatrix4fv(projectionLocation, false, frameData.rightProjectionMatrix);
+      }
+      GLctx.drawArrays(mode, first, count);
+      GL.postDrawHandleClientVertexAttribBindings();
+    }
 }
 
 function _glDrawElements(mode, count, type, indices) {
-    var buf;
+    throw new Error('fail');
+    /* var buf;
     if (!GL.currElementArrayBuffer) {
         var size = GL.calcBufLength(1, type, 0, count);
         buf = GL.getTempIndexBuffer(size);
@@ -9813,7 +9965,7 @@ function _glDrawElements(mode, count, type, indices) {
     GL.postDrawHandleClientVertexAttribBindings(count);
     if (!GL.currElementArrayBuffer) {
         GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, null)
-    }
+    } */
 }
 
 function _glEnable(x0) {
@@ -10128,6 +10280,8 @@ function _glScissor(x0, x1, x2, x3) {
 
 function _glShaderSource(shader, count, string, length) {
     var source = GL.getSource(shader, count, string, length);
+    source = hackVertexShader(GL.shaders[shader], source);
+    GL.shaders[shader].source = source;
     GLctx.shaderSource(GL.shaders[shader], source)
 }
 
@@ -10261,8 +10415,53 @@ function _glUniformMatrix4fv(location, count, transpose, value) {
     GLctx.uniformMatrix4fv(GL.uniforms[location], !!transpose, view)
 }
 
+let hackedProgram = false;
+let modelViewLocation = null;
+let projectionLocation = null;
 function _glUseProgram(program) {
-    GLctx.useProgram(program ? GL.programs[program] : null)
+    program = program ? GL.programs[program] : null;
+    GLctx.useProgram(program);
+
+    if (program && program.hacked && frameData) {
+      modelViewLocation = GLctx.getUniformLocation(program, 'modelView');
+      projectionLocation = GLctx.getUniformLocation(program, 'projection');
+      // console.log('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nhhhhhhhhhhhhhhhhhhhhhhhack', uniformLocation, '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n');
+      /* const hackable = ![ 1,
+        4,
+        7,
+        10,
+        13,
+        16,
+        19,
+        22,
+        25,
+        30,
+        33,
+        34,
+        36,
+        38,
+        40, 
+        42,
+        // 44, // moon
+        // 46, // terrain
+        // 48, // link
+        // 50, // epona
+        // 52, // dust
+        // 54, // ?
+        // 56, // sky
+        // 58,
+        60, // main logo
+        // 62,
+        64, // logo fire
+        66,
+        68,
+      ].includes(program.id); */
+      hackedProgram = true;
+    } else {
+      hackedProgram = false;
+      modelViewLocation = null;
+      projectionLocation = null;
+    }
 }
 
 function _glVertexAttrib4f(x0, x1, x2, x3, x4) {
