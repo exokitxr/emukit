@@ -8155,7 +8155,7 @@ function _emscripten_glActiveTexture(x0) {
     GLctx["activeTexture"](x0)
 }
 
-const hackedPrograms = [];
+// const hackedPrograms = [];
 function _emscripten_glAttachShader(program, shader) {
     throw new Error('fail');
     /* GL.programs[program].hacked |= !!GL.shaders[shader].hacked;
@@ -9740,10 +9740,10 @@ function _glAttachShader(program, shader) {
     GL.programs[program].hacked |= !!GL.shaders[shader].hacked;
     GL.programs[program].shaders = GL.programs[program].shaders || [];
     GL.programs[program].shaders.push(GL.shaders[shader]);
-    if (GL.programs[program].hacked && !hackedPrograms.includes(GL.programs[program])) {
+    /* if (GL.programs[program].hacked && !hackedPrograms.includes(GL.programs[program])) {
       hackedPrograms.push(GL.programs[program]);
       // console.log('programs', hackedPrograms.map(p => p.id));
-    }
+    } */
     if (GL.programs[program].id === 48) {
       const ids = GL.programs[program].shaders.map(s => s.id);
       const sources = GL.programs[program].shaders.map(s => s.source);
