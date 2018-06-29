@@ -1526,7 +1526,7 @@ var Browser = {
 
             func.apply(this, arguments);
 
-            renderScene();
+            Module.renderScene();
 
             // display.submitFrame();
           });
@@ -1534,7 +1534,7 @@ var Browser = {
             Browser.fakeRequestAnimationFrame(function() {
               func.apply(this, arguments);
 
-              renderScene();
+              Module.renderScene();
             });
         } else {
             if (!window.requestAnimationFrame) {
@@ -1543,7 +1543,7 @@ var Browser = {
             window.requestAnimationFrame(function() {
               func.apply(this, arguments);
 
-              renderScene();
+              Module.renderScene();
             })
         }
     },
@@ -10286,7 +10286,9 @@ function _glScissor(x0, x1, x2, x3) {
 
 function _glShaderSource(shader, count, string, length) {
     var source = GL.getSource(shader, count, string, length);
-    source = hackVertexShader(GL.shaders[shader], source);
+    if (Module.vr) {
+      source = hackVertexShader(GL.shaders[shader], source);
+    }
     GL.shaders[shader].source = source;
     GLctx.shaderSource(GL.shaders[shader], source)
 }
@@ -10428,7 +10430,7 @@ function _glUseProgram(program) {
     program = program ? GL.programs[program] : null;
     GLctx.useProgram(program);
 
-    if (program && program.hacked && Module.vr) {
+    if (program && program.hacked) {
       modelViewLocation = GLctx.getUniformLocation(program, 'modelView');
       projectionLocation = GLctx.getUniformLocation(program, 'projection');
       // console.log('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nhhhhhhhhhhhhhhhhhhhhhhhack', uniformLocation, '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n');
