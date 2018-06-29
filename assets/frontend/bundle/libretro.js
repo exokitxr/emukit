@@ -637,7 +637,7 @@ function bootstrapScene() {
                     key: 'Q',
                     code: 'KeyQ',
                   });
-                  console.log('dispatch', keydownEvent.key);
+                  // console.log('dispatch', keydownEvent.key);
                   window.document.dispatchEvent(keydownEvent);
                 } else {
                   const keydownEvent = new KeyboardEvent('keydown', {
@@ -647,7 +647,7 @@ function bootstrapScene() {
                     key: 'Z',
                     code: 'KeyZ',
                   });
-                  console.log('dispatch', keydownEvent.key);
+                  // console.log('dispatch', keydownEvent.key);
                   window.document.dispatchEvent(keydownEvent);
                 }
               } else if (!pressed && lastPressed) {
@@ -685,7 +685,7 @@ function bootstrapScene() {
                     key: 'Enter',
                     code: 'Enter',
                   });
-                  console.log('dispatch', keydownEvent.key);
+                  // console.log('dispatch', keydownEvent.key);
                   window.document.dispatchEvent(keydownEvent);
                 } else {
                   const keydownEvent = new KeyboardEvent('keydown', {
@@ -695,7 +695,7 @@ function bootstrapScene() {
                     key: 'A',
                     code: 'KeyA',
                   });
-                  console.log('dispatch', keydownEvent.key);
+                  // console.log('dispatch', keydownEvent.key);
                   window.document.dispatchEvent(keydownEvent);
                 }
               } else if (!grabbed && lastGrabbed) {
@@ -737,7 +737,7 @@ function bootstrapScene() {
                     key,
                     code,
                   });
-                  console.log('dispatch', keydownEvent.key);
+                  // console.log('dispatch', keydownEvent.key);
                   window.document.dispatchEvent(keydownEvent);
                 }
               } else if (!padPressed && lastPadPressed) {
@@ -785,7 +785,7 @@ function bootstrapScene() {
                     key,
                     code,
                   });
-                  console.log('dispatch', keydownEvent.key);
+                  // console.log('dispatch', keydownEvent.key);
                   window.document.dispatchEvent(keydownEvent);
                 }
               }
