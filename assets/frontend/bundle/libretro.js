@@ -403,7 +403,11 @@ function bootstrapScene() {
       return object;
     })();
     scene.add(consoleMesh);
-  
+
+    const lastPresseds = [false, false];
+    const lastMenuPresseds = [false, false];
+    const lastGrabbeds = [false, false];
+    const lastPadPresseds = [null, null];
     const gamepadMeshes = (() => {
       const leftGamepadMesh = (() => {
         const object = new THREE.Object3D();
@@ -486,62 +490,62 @@ function bootstrapScene() {
       scene.add(gamepadMeshes[i]);
     }
 
-       /* const DIRECTIONS = [
-        {
-          direction: 'left',
-          x: -1,
-          y: 0,
-          keyCode: 37,
-          which: 37,
-          charCode: 0,
-          key: 'ArrowLeft',
-          code: 'ArrowLeft',
-        },
-        {
-          direction: 'right',
-          x: 1,
-          y: 0,
-          keyCode: 39,
-          which: 39,
-          charCode: 0,
-          key: 'ArrowRight',
-          code: 'ArrowRight',
-        },
-        {
-          direction: 'up',
-          x: 0,
-          y: 1,
-          keyCode: 38,
-          which: 38,
-          charCode: 0,
-          key: 'ArrowUp',
-          code: 'ArrowUp',
-        },
-        {
-          direction: 'down',
-          x: 0,
-          y: -1,
-          keyCode: 40,
-          which: 40,
-          charCode: 0,
-          key: 'ArrowDown',
-          code: 'ArrowDown',
-        },
-      ];
-      const _getGamepadDirection = gamepad => {
-        const {axes} = gamepad;
-        const [x, y] = axes;
+    const DIRECTIONS = [
+      {
+        direction: 'left',
+        x: -1,
+        y: 0,
+        keyCode: 37,
+        which: 37,
+        charCode: 0,
+        key: 'ArrowLeft',
+        code: 'ArrowLeft',
+      },
+      {
+        direction: 'right',
+        x: 1,
+        y: 0,
+        keyCode: 39,
+        which: 39,
+        charCode: 0,
+        key: 'ArrowRight',
+        code: 'ArrowRight',
+      },
+      {
+        direction: 'up',
+        x: 0,
+        y: 1,
+        keyCode: 38,
+        which: 38,
+        charCode: 0,
+        key: 'ArrowUp',
+        code: 'ArrowUp',
+      },
+      {
+        direction: 'down',
+        x: 0,
+        y: -1,
+        keyCode: 40,
+        which: 40,
+        charCode: 0,
+        key: 'ArrowDown',
+        code: 'ArrowDown',
+      },
+    ];
+    const _getGamepadDirection = gamepad => {
+      const {axes} = gamepad;
+      const [x, y] = axes;
 
-        return DIRECTIONS.map(directionSpec => {
-          const dx = x - directionSpec.x;
-          const dy = y - directionSpec.y;
-          const distance = Math.sqrt((dx * dx) + (dy * dy));
-          return {
-            distance,
-            direction: directionSpec.direction,
-          };
-        }).sort((a, b) => a.distance - b.distance)[0].direction;
-      }; */
+      return DIRECTIONS.map(directionSpec => {
+        const dx = x - directionSpec.x;
+        const dy = y - directionSpec.y;
+        const distance = Math.sqrt((dx * dx) + (dy * dy));
+        return {
+          distance,
+          direction: directionSpec.direction,
+        };
+      }).sort((a, b) => a.distance - b.distance)[0].direction;
+    };
 
     let cleared = false;
     Error.stackTraceLimit = 300;
@@ -557,9 +561,213 @@ function bootstrapScene() {
         // context.disable(context.STENCIL_TEST);
         renderer.state.reset();
 
-        const _updateControllers = () => {
-          const gamepads = navigator.getGamepads();
+        const gamepads = navigator.getGamepads();
+        const _updateControls = () => {
+          for (let i = 0; i < gamepads.length; i++) {
+            const gamepad = gamepads[i];
+            if (gamepad) {
+              const pressed = gamepad.buttons[1].pressed;
+              const grabbed = gamepad.buttons[2].pressed;
+              const menuPressed = gamepad.buttons[3].pressed;
+              const padPressed = gamepad.buttons[0].pressed ? _getGamepadDirection(gamepad) : null;
 
+              const lastPressed = lastPresseds[i];
+              lastPresseds[i] = pressed;
+              if (pressed && !lastPressed) {
+                if (i === 0) {
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: 81,
+                    which: 81,
+                    charCode: 0,
+                    key: 'Q',
+                    code: 'KeyQ',
+                  });
+                  console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                } else {
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: 90,
+                    which: 90,
+                    charCode: 0,
+                    key: 'Z',
+                    code: 'KeyZ',
+                  });
+                  console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                }
+              } else if (!pressed && lastPressed) {
+                if (i === 0) {
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: 81,
+                    which: 81,
+                    charCode: 0,
+                    key: 'Q',
+                    code: 'KeyQ',
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                } else {
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: 90,
+                    which: 90,
+                    charCode: 0,
+                    key: 'Z',
+                    code: 'KeyZ',
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                }
+              }
+
+              const lastGrabbed = lastGrabbeds[i];
+              lastGrabbeds[i] = grabbed;
+              if (grabbed && !lastGrabbed) {
+                if (i === 0) {
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: 13,
+                    which: 13,
+                    charCode: 0,
+                    key: 'Enter',
+                    code: 'Enter',
+                  });
+                  console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                } else {
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: 65,
+                    which: 65,
+                    charCode: 0,
+                    key: 'A',
+                    code: 'KeyA',
+                  });
+                  console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                }
+              } else if (!grabbed && lastGrabbed) {
+                if (i === 0) {
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: 13,
+                    which: 13,
+                    charCode: 0,
+                    key: 'Enter',
+                    code: 'Enter',
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                } else {
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: 65,
+                    which: 65,
+                    charCode: 0,
+                    key: 'A',
+                    code: 'KeyA',
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                }
+              }
+
+              const lastPadPressed = lastPadPresseds[i];
+              lastPadPresseds[i] = padPressed;
+              if (padPressed && !lastPadPressed) {
+                if (i === 0) {
+                  const directionSpec = DIRECTIONS.find(d => d.direction === padPressed);
+                  const {keyCode, which, charCode, key, code} = directionSpec;
+
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode,
+                    which,
+                    charCode,
+                    key,
+                    code,
+                  });
+                  console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                } else {
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: 65,
+                    which: 65,
+                    charCode: 0,
+                    key: 'A',
+                    code: 'KeyA',
+                  });
+                  console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                }
+              } else if (!padPressed && lastPadPressed) {
+                if (i === 0) {
+                  const directionSpec = DIRECTIONS.find(d => d.direction === lastPadPressed);
+                  const {keyCode, which, charCode, key, code} = directionSpec;
+
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode,
+                    which,
+                    charCode,
+                    key,
+                    code,
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                } else {
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: 65,
+                    which: 65,
+                    charCode: 0,
+                    key: 'A',
+                    code: 'KeyA',
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                }
+              } else if (padPressed && lastPadPressed && padPressed !== lastPadPressed) {
+                if (i === 0) {
+                  const lastDirectionSpec = DIRECTIONS.find(d => d.direction === lastPadPressed);
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: lastDirectionSpec.keyCode,
+                    which: lastDirectionSpec.which,
+                    charCode: lastDirectionSpec.charCode,
+                    key: lastDirectionSpec.key,
+                    code: lastDirectionSpec.code,
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+
+                  const directionSpec = DIRECTIONS.find(d => d.direction === padPressed);
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: directionSpec.keyCode,
+                    which: directionSpec.which,
+                    charCode: directionSpec.charCode,
+                    key: directionSpec.key,
+                    code: directionSpec.code,
+                  });
+                  console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                } else {
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: 65,
+                    which: 65,
+                    charCode: 0,
+                    key: 'A',
+                    code: 'KeyA',
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: 65,
+                    which: 65,
+                    charCode: 0,
+                    key: 'A',
+                    code: 'KeyA',
+                  });
+                  console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                }
+              }
+            }
+          }
+        };
+        const _updateGamepadMeshes = () => {
           for (let i = 0; i < gamepads.length; i++) {
             const gamepad = gamepads[i];
             if (gamepad) {
@@ -570,7 +778,8 @@ function bootstrapScene() {
             }
           }
         };
-        _updateControllers();
+        _updateControls();
+        _updateGamepadMeshes();
 
         // console.log('overlay 1');
         renderer.render(scene, camera);
