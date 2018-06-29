@@ -23,30 +23,12 @@ function cleanupStorage() {
     document.getElementById("btnClean").disabled = true;
 }
 
-/* function preLoadingComplete() {
-    $('.webplayer-preview').addClass('loaded').click(function() {
-        startRetroArch();
-        return false;
-    });
-    document.getElementById("btnRun").disabled = false;
-    $('#btnRun').removeClass('disabled');
-
-    $('.webplayer').show();
-    $('.webplayer-preview').hide();
-    document.getElementById("btnRun").disabled = true;
-
-    bootstrapScene();
-} */
-
 function setupFileSystem(backend) {
   return Promise.all([
     fetch('/assets/frontend/bundle/.index-xhr').then(res => res.json()),
     fetch('/assets/cores/.index-xhr').then(res => res.json()),
     fetch('/assets/frontend/bundle/retroarch.cfg').then(res => res.arrayBuffer()),
     // fetch('/assets/cores/sonic3.md').then(res => res.arrayBuffer()),
-    // fetch('/assets/cores/oot.z64').then(res => res.arrayBuffer()),
-    // fetch('/assets/cores/majora.z64').then(res => res.arrayBuffer()),
-    // fetch('/assets/cores/starfox.z64').then(res => res.arrayBuffer()),
   ])
   .then(xhrs => {
     /* create a mountable filesystem that will server as a root
