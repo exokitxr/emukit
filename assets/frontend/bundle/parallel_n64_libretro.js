@@ -8296,11 +8296,12 @@ function _emscripten_glCopyTexSubImage2D(x0, x1, x2, x3, x4, x5, x6, x7) {
 }
 
 function _emscripten_glCreateProgram() {
-    var id = GL.getNewId(GL.programs);
+    throw new Error('fail');
+    /* var id = GL.getNewId(GL.programs);
     var program = GLctx.createProgram();
     program.name = id;
     GL.programs[id] = program;
-    return id
+    return id */
 }
 
 function _emscripten_glCreateShader(shaderType) {
@@ -9194,55 +9195,43 @@ function _emscripten_glShaderBinary() {
     GL.recordError(1280)
 }
 
-function hackVertexShader(shader, source) {
-  if (shader.type === 35633 && !shader.hacked) {
-    if (/gl_Position;/.test(source)) {
-      throw new Error('failed');
-    }
+function hackVertexShader(source) {
+  return source
+    .replace(/(void main\(\))/, 'uniform mat4 modelView;uniform mat4 projection;\n$1')
+    .replace(/(gl_Position\.x\s*=[\s\S]*gl_Position\s*\/=\s*q;)/, `\
+      gl_Position.x = (aPosition.x - vertexOffset.x) / vertexOffset.x;
+      gl_Position.y = invertY *-(aPosition.y - vertexOffset.y) / vertexOffset.y;
+      gl_Position.z = aPosition.z / Z_MAX;
+      gl_Position.w = 1.0;
+      gl_Position.z = -abs(gl_Position.z);
+      gl_Position.xyz /= q;
+      gl_Position.xyz /= 100.0;
+      gl_Position.y += 1;
+      gl_Position.z *= 1.5;
+      gl_Position.z += 1.0;
+      gl_Position = modelView * gl_Position;
+      gl_Position = projection * gl_Position;
+      gl_Position;
+    `);
 
-    source = source
-      .replace(/(void main\(\))/, 'uniform mat4 modelView;uniform mat4 projection;\n$1')
+  /* source = source
+    .replace(/(gl_Position\s*=\s*.+?;)/, 'gl_Position.z -= 10.0;gl_Position.z *= 65536.0;$1'); */
 
-    source = source
-      .replace(/(gl_Position\.x\s*=[\s\S]*gl_Position\s*\/=\s*q;)/, `\
-        gl_Position.x = (aPosition.x - vertexOffset.x) / vertexOffset.x;
-        gl_Position.y = invertY *-(aPosition.y - vertexOffset.y) / vertexOffset.y;
-        gl_Position.z = aPosition.z / Z_MAX;
-        gl_Position.w = 1.0;
-        gl_Position.z = -abs(gl_Position.z);
-        gl_Position.xyz /= q;
-        gl_Position.xyz /= 100.0;
-        gl_Position.y += 1;
-        gl_Position.z *= 1.5;
-        gl_Position.z += 1.0;
-        gl_Position = modelView * gl_Position;
-        gl_Position = projection * gl_Position;
-        gl_Position;
-      `);
+  /* source = source
+    .replace(/(gl_Position \/= q;)/, ''); */
 
-    /* source = source
-      .replace(/(gl_Position\s*=\s*.+?;)/, 'gl_Position.z -= 10.0;gl_Position.z *= 65536.0;$1'); */
+  /* const replacement = '$1' +
+    // (shader.id === 31 ? 'gl_Position.y -= 30.0;' : '') +
+    'gl_Position = modelView * gl_Position;' +
+    // 'gl_Position.z -= 2.0;' +
+    //'gl_Position.z *= 2.0;' +
+    'gl_Position = projection * gl_Position;';
 
-    /* source = source
-      .replace(/(gl_Position \/= q;)/, ''); */
-
-    /* const replacement = '$1' +
-      // (shader.id === 31 ? 'gl_Position.y -= 30.0;' : '') +
-      'gl_Position = modelView * gl_Position;' +
-      // 'gl_Position.z -= 2.0;' +
-      //'gl_Position.z *= 2.0;' +
-      'gl_Position = projection * gl_Position;';
-
-    source = source
-      .replace(/(void main\(\))/, 'uniform mat4 modelView;uniform mat4 projection;\n$1')
-      .replace(/(gl_Position\s*\/=\s*.+?;)/, replacement)
-      // .replace(/(gl_Position\s*=\s*.+?;)/, replacement)
-      .replace(/(gl_Position;)/, replacement) */
-
-    shader.hacked = true;
-  }
-
-  return source;
+  source = source
+    .replace(/(void main\(\))/, 'uniform mat4 modelView;uniform mat4 projection;\n$1')
+    .replace(/(gl_Position\s*\/=\s*.+?;)/, replacement)
+    // .replace(/(gl_Position\s*=\s*.+?;)/, replacement)
+    .replace(/(gl_Position;)/, replacement) */
 }
 
 function _emscripten_glShaderSource(shader, count, string, length) {
@@ -9737,19 +9726,21 @@ function _glActiveTexture(x0) {
 }
 
 function _glAttachShader(program, shader) {
-    GL.programs[program].hacked |= !!GL.shaders[shader].hacked;
-    GL.programs[program].shaders = GL.programs[program].shaders || [];
-    GL.programs[program].shaders.push(GL.shaders[shader]);
+    const programObj = GL.programs[program];
+    const shaderObj = GL.shaders[shader];
+    programObj.hacked = programObj.hacked || shaderObj.hacked;
+    // programObj.shaders = programObj.shaders || [];
+    // programObj.shaders.push(GL.shaders[shader]);
     /* if (GL.programs[program].hacked && !hackedPrograms.includes(GL.programs[program])) {
       hackedPrograms.push(GL.programs[program]);
       // console.log('programs', hackedPrograms.map(p => p.id));
     } */
-    if (GL.programs[program].id === 48) {
-      const ids = GL.programs[program].shaders.map(s => s.id);
-      const sources = GL.programs[program].shaders.map(s => s.source);
+    /* if (programObj.id === 48) {
+      const ids = programObj.shaders.map(s => s.id);
+      const sources = programObj.shaders.map(s => s.source);
       console.log('load shaders', ids, '\n// VERTEX\n', sources[0], '\n// FRAGMENT\n', sources[1]);
-    }
-    GLctx.attachShader(GL.programs[program], GL.shaders[shader])
+    } */
+    GLctx.attachShader(programObj, shaderObj)
 }
 
 function _glBindAttribLocation(program, index, name) {
@@ -9827,13 +9818,18 @@ function _glCreateProgram() {
     var id = GL.getNewId(GL.programs);
     var program = GLctx.createProgram();
     program.name = id;
+    program.hacked = false;
+    program.modelViewLocation = null;
+    program.projectionLocation = null;
     GL.programs[id] = program;
     return id
 }
 
 function _glCreateShader(shaderType) {
     var id = GL.getNewId(GL.shaders);
-    GL.shaders[id] = GLctx.createShader(shaderType);
+    const shader = GLctx.createShader(shaderType);
+    GL.shaders[id] = shader;
+    shader.hacked = false;
     return id
 }
 
@@ -9934,8 +9930,8 @@ function _glDrawArrays(mode, first, count) {
     }
     GLctx.disable(GLctx.SCISSOR_TEST);
     if (hackedProgram) {
-      GLctx.uniformMatrix4fv(modelViewLocation, false, frameData.leftViewMatrix);
-      GLctx.uniformMatrix4fv(projectionLocation, false, frameData.leftProjectionMatrix);
+      GLctx.uniformMatrix4fv(hackedProgram.modelViewLocation, false, frameData.leftViewMatrix);
+      GLctx.uniformMatrix4fv(hackedProgram.projectionLocation, false, frameData.leftProjectionMatrix);
     }
     GLctx.drawArrays(mode, first, count);
     GL.postDrawHandleClientVertexAttribBindings()
@@ -9948,8 +9944,8 @@ function _glDrawArrays(mode, first, count) {
         GLctx.viewport(leftEyeParameters.renderWidth, 0, rightEyeParameters.renderWidth, rightEyeParameters.renderHeight);
       }
       if (hackedProgram) {
-        GLctx.uniformMatrix4fv(modelViewLocation, false, frameData.rightViewMatrix);
-        GLctx.uniformMatrix4fv(projectionLocation, false, frameData.rightProjectionMatrix);
+        GLctx.uniformMatrix4fv(hackedProgram.modelViewLocation, false, frameData.rightViewMatrix);
+        GLctx.uniformMatrix4fv(hackedProgram.projectionLocation, false, frameData.rightProjectionMatrix);
       }
       GLctx.drawArrays(mode, first, count);
       GL.postDrawHandleClientVertexAttribBindings();
@@ -10285,12 +10281,14 @@ function _glScissor(x0, x1, x2, x3) {
 }
 
 function _glShaderSource(shader, count, string, length) {
-    var source = GL.getSource(shader, count, string, length);
-    if (Module.vr) {
-      source = hackVertexShader(GL.shaders[shader], source);
+    let source = GL.getSource(shader, count, string, length);
+    const shaderObj = GL.shaders[shader];
+    if (Module.vr && shaderObj.type === 35633) {
+      source = hackVertexShader(source);
+      shaderObj.hacked = true;
     }
-    GL.shaders[shader].source = source;
-    GLctx.shaderSource(GL.shaders[shader], source)
+    // shaderObj.source = source;
+    GLctx.shaderSource(shaderObj, source);
 }
 
 function _glStencilFunc(x0, x1, x2) {
@@ -10423,16 +10421,20 @@ function _glUniformMatrix4fv(location, count, transpose, value) {
     GLctx.uniformMatrix4fv(GL.uniforms[location], !!transpose, view)
 }
 
-let hackedProgram = false;
-let modelViewLocation = null;
-let projectionLocation = null;
+let hackedProgram = null;
+// let modelViewLocation = null;
+// let projectionLocation = null;
 function _glUseProgram(program) {
     program = program ? GL.programs[program] : null;
     GLctx.useProgram(program);
 
     if (program && program.hacked) {
-      modelViewLocation = GLctx.getUniformLocation(program, 'modelView');
-      projectionLocation = GLctx.getUniformLocation(program, 'projection');
+      if (!program.modelViewLocation) {
+        program.modelViewLocation = GLctx.getUniformLocation(program, 'modelView');
+      }
+      if (!program.projectionLocation) {
+        program.projectionLocation = GLctx.getUniformLocation(program, 'projection');
+      }
       // console.log('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nhhhhhhhhhhhhhhhhhhhhhhhack', uniformLocation, '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n');
       /* const hackable = ![ 1,
         4,
@@ -10464,11 +10466,9 @@ function _glUseProgram(program) {
         66,
         68,
       ].includes(program.id); */
-      hackedProgram = true;
+      hackedProgram = program;
     } else {
-      hackedProgram = false;
-      modelViewLocation = null;
-      projectionLocation = null;
+      hackedProgram = null;
     }
 }
 
