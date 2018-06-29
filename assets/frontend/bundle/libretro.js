@@ -65,39 +65,19 @@ function setupFileSystem(backend) {
     // FS.mkdir('/home/web_user/retroarch/userdata/states');
     FS.mkdir('/home/web_user/retroarch/userdata/content');
     FS.mkdir('/home/web_user/retroarch/userdata/content/downloads');
-
-    /* (() => {
-        const name = 'majora.z64';
-        const dataView = new Uint8Array(xhrs[3]);
-        FS.createDataFile('/', name, dataView, true, false);
-
-        const data = FS.readFile(name, {
-            encoding: 'binary'
-        });
-        FS.mkdir('/home/web_user/retroarch/userdata/states');
-        FS.mkdir('/home/web_user/retroarch/userdata/content');
-        FS.mkdir('/home/web_user/retroarch/userdata/content/downloads');
-        FS.writeFile('/home/web_user/retroarch/userdata/content/downloads/' + name, data, {
-            encoding: 'binary'
-        });
-        FS.unlink(name);
-    })(); */
   });
 }
 
-function bootstrapScene() {
-  /* const context = Browser.createContext(canvas, true, true, {
-    antialias: true,
-    depth: true,
-    stencil: true,
-    alpha: false,
-  }); */
-
+let renderer = null;
+let scene = null;
+let camera = null;
+let screenQuad = null;
+function initRenderer() {
   if (navigator.xr) {
     delete navigator.xr;
   }
   const {canvas, ctx: context} = Module;
-  const renderer = new THREE.WebGLRenderer({
+  renderer = new THREE.WebGLRenderer({
     canvas,
     context,
     // preserveDrawingBuffer: true,
@@ -108,12 +88,86 @@ function bootstrapScene() {
   renderer.sortObjects = false;
   // renderer.vr.enabled = true;
 
-  const scene = new THREE.Scene();
+  scene = new THREE.Scene();
 
-  const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 10 * 1024);
+  camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 10 * 1024);
   camera.position.set(0, 1.5, 1);
   camera.rotation.order = 'YXZ';
   scene.add(camera);
+
+  screenQuad = (() => {
+    const defaultQuad = new THREE.PlaneBufferGeometry(2, 2, 1, 1);
+    const vertexShader = [
+      "varying vec2 vUv;",
+      "void main(){",
+        "vUv = uv;",
+        "gl_Position = vec4(position.x, -position.y, 1.0, 1.0);",
+      "}",
+  	].join('\n');
+    const fragmentShader = [
+      `varying vec2 vUv;
+      uniform sampler2D uTexture;
+      void main() {
+        gl_FragColor = texture2D(uTexture, vUv);
+      }`
+    ].join('\n');
+    const texture = new THREE.Texture(
+      null,
+      THREE.UVMapping,
+      THREE.RepeatWrapping,
+      THREE.RepeatWrapping,
+      THREE.LinearFilter,
+      THREE.LinearFilter,
+      THREE.RGBAFormat,
+      THREE.UnsignedByteType,
+      1
+    );
+    texture.flipY = false;
+    const coverImg = new Image();
+    coverImg.onload = () => {
+      texture.image = coverImg;
+      texture.needsUpdate = true;
+
+      requestAnimationFrame(() => {
+        console.log('render');
+        renderer.clear(true, true, true);
+        scene.background = new THREE.Color(0xFFFFFF);
+        renderer.render(scene, camera);
+        scene.background = null;
+      });
+    };
+    coverImg.onerror = err => {
+      console.warn(err);
+    };
+    coverImg.src = '/assets/img/drop.png';
+    const mesh = new THREE.Mesh(defaultQuad, new THREE.ShaderMaterial({
+			uniforms: {
+				uTexture: {
+					type:'t',
+					value: texture,
+				},
+      },
+      vertexShader,
+      fragmentShader,
+      side: THREE.BackSide,
+      depthWrite: false,
+      transparent: true,
+      alphaTest: 0.9,
+		}));
+    return mesh;
+  })();
+  scene.add(screenQuad);
+}
+function initScene() {
+  const {canvas, ctx: context} = Module;
+
+  scene.remove(screenQuad);
+  screenQuad.geometry.dispose();
+  screenQuad.material.dispose();
+  screenQuad.material.uniforms.uTexture.value.dispose();
+  screenQuad = null;
+
+  renderer.clear(true, true, true);
 
   const ambientLight = new THREE.AmbientLight(0x808080);
   scene.add(ambientLight);
@@ -913,7 +967,7 @@ function uploadData(fileData, fileName) {
           GL.makeContextCurrent(handle);
           Module.arguments.push(filePath);
 
-          bootstrapScene();
+          initScene();
         });
     });
   } else {
@@ -1014,6 +1068,8 @@ window.onload = () => {
   Module.ctx = canvas.getContext('webgl', {
     antialias: true,
   });
+
+  initRenderer();
 };
 
 function keyPress(k) {
