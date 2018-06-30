@@ -818,9 +818,9 @@ function isDataURI(filename) {
 }
 
 function integrateWasmJS() {
-    var wasmTextFile = "genesis_plus_gx_libretro.wast";
-    var wasmBinaryFile = "genesis_plus_gx_libretro.wasm";
-    var asmjsCodeFile = "genesis_plus_gx_libretro.temp.asm.js";
+    var wasmTextFile = "assets/frontend/bundle/genesis_plus_gx_libretro.wast";
+    var wasmBinaryFile = "assets/frontend/bundle/genesis_plus_gx_libretro.wasm";
+    var asmjsCodeFile = "assets/frontend/bundle/genesis_plus_gx_libretro.temp.asm.js";
     if (typeof Module["locateFile"] === "function") {
         if (!isDataURI(wasmTextFile)) {
             wasmTextFile = Module["locateFile"](wasmTextFile)
