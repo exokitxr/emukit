@@ -16,15 +16,7 @@
    <link rel="shortcut icon" href="https://web.libretro.com/media/retroarch.ico" />
 </head>
 <body>
-   <div class="bg-inverse webplayer-container">
-      <div class="container">
-         <div class="webplayer_border text-xs-center" id="canvas_div">
-            <canvas class="webplayer" id="canvas" tabindex="1" oncontextmenu="event.preventDefault()"></canvas>
-            <!-- <img class="webplayer-preview img-fluid" src="media/canvas.png" width="960px" height="720px" alt="RetroArch Logo"> -->
-         </div>
-      </div>
-   </div>
-
+   <canvas class="webplayer" id="canvas" tabindex="1" oncontextmenu="event.preventDefault()"></canvas>
    <script src="three.js"></script>
    <script src="assets/frontend/bundle/browserfs.min.js"></script>
    <script src="assets/frontend/bundle/libretro.js"></script>
