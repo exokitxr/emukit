@@ -375,7 +375,7 @@ function initScene() {
     const gamepadMeshes = (() => {
       const leftGamepadMesh = (() => {
         const object = new THREE.Object3D();
-        object.position.set(-0.1, 1.5, 0.7);
+        object.position.set(-0.1, 0.5, 0.7);
         object.isGamepad = true;
         // object.controllerIndex = 0;
 
@@ -446,7 +446,7 @@ function initScene() {
 
       const rightGamepadMesh = (() => {
         const object = new THREE.Object3D();
-        object.position.set(0.1, 1.5, 0.7);
+        object.position.set(0.1, 0.5, 0.7);
         object.isGamepad = true;
         // object.controllerIndex = 1;
 
