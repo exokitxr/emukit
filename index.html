@@ -1,19 +1,31 @@
 <!doctype html>
 <html lang="en">
 <head>
-   <meta charset="utf-8">
+  <meta charset="utf-8">
 
-   <title>RetroArch Web Player</title>
-   <meta name="viewport" content="width=device-width, initial-scale=1">
-   <!-- Bootstrap core CSS -->
-   <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0-alpha.3/css/bootstrap.min.css" rel="stylesheet" type="text/css">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.0/css/font-awesome.min.css">
-    <!-- Material Design Bootstrap -->
-    <link href="//cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.1.1/css/mdb.min.css" rel="stylesheet">
+  <title>Emukit by Exokit</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap core CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0-alpha.3/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.0/css/font-awesome.min.css">
+  <!-- Material Design Bootstrap -->
+  <link href="//cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.1.1/css/mdb.min.css" rel="stylesheet">
+  <link rel="shortcut icon" href="favicon.ico" />
 
-   <link href="libretro.css" rel="stylesheet" type="text/css">
-   <link rel="shortcut icon" href="https://web.libretro.com/media/retroarch.ico" />
+  <style>
+    body {
+      margin: 0;
+    }
+
+    canvas.webplayer {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
+  </style>
 </head>
 <body>
    <canvas class="webplayer" id="canvas" tabindex="1" oncontextmenu="event.preventDefault()"></canvas>
