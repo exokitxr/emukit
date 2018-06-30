@@ -1038,12 +1038,17 @@ window.onload = () => {
           source: canvas,
         }])
           .then(() => {
+            const leftEyeParameters = display.getEyeParameters('left');
+            const rightEyeParameters = display.getEyeParameters('right');
+            const renderWidth = leftEyeParameters.renderWidth + rightEyeParameters.renderWidth;
+            const renderHeight = Math.max(leftEyeParameters.renderHeight, rightEyeParameters.renderHeight);
+
+            renderer.setSize(renderWidth, renderHeight);
+            renderer.setPixelRatio(1);
             renderer.vr.setDevice(display);
             renderer.vr.enabled = true;
 
-            const leftEyeParameters = display.getEyeParameters('left');
-            const rightEyeParameters = display.getEyeParameters('right');
-            Browser.setCanvasSize(leftEyeParameters.renderWidth + rightEyeParameters.renderWidth, Math.max(leftEyeParameters.renderHeight, rightEyeParameters.renderHeight));
+            Browser.setCanvasSize(renderWidth, renderHeight);
 
             Module.display = display;
             Module.leftEyeParameters = leftEyeParameters;
