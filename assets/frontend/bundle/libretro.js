@@ -925,7 +925,7 @@ function uploadData(fileData, fileName) {
   const core = _getCoreNameForFileName(fileName);
   if (core) {
     const script = document.createElement('script');
-    script.src = core + '_libretro.js';
+    script.src = 'assets/frontend/bundle/' + core + '_libretro.js';
     script.onload = () => {
       setupFileSystem("browser")
         .then(() => {
