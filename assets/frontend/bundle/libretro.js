@@ -908,60 +908,6 @@ function initScene() {
     }
 }
 
-/**
- * Retrieve the value of the given GET parameter.
- */
-/* function getParam(name) {
-    var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
-    if (results) {
-        return results[1] || null;
-    }
-}
-
-function startRetroArch() {
-  throw new Error('lol');
-    $('.webplayer').show();
-    $('.webplayer-preview').hide();
-    document.getElementById("btnRun").disabled = true;
-
-    $('#btnFullscreen').removeClass('disabled');
-    $('#btnMenu').removeClass('disabled');
-    $('#btnAdd').removeClass('disabled');
-    $('#btnRom').removeClass('disabled');
-
-    document.getElementById("btnAdd").disabled = false;
-    document.getElementById("btnRom").disabled = false;
-    document.getElementById("btnMenu").disabled = false;
-    document.getElementById("btnFullscreen").disabled = false;
-
-    Module['callMain'](Module['arguments']);
-    document.getElementById('canvas').focus();
-} */
-
-function selectFiles(files) {
-    $('#btnAdd').addClass('disabled');
-    $('#icnAdd').removeClass('fa-plus');
-    $('#icnAdd').addClass('fa-spinner spinning');
-    var count = files.length;
-
-    for (var i = 0; i < files.length; i++) {
-        filereader = new FileReader();
-        filereader.file_name = files[i].name;
-        filereader.readAsArrayBuffer(files[i]);
-        filereader.onload = function() {
-            uploadData(this.result, this.file_name)
-        };
-        filereader.onloadend = function(evt) {
-            console.log("WEBPLAYER: file: " + this.file_name + " upload complete");
-            if (evt.target.readyState == FileReader.DONE) {
-                $('#btnAdd').removeClass('disabled');
-                $('#icnAdd').removeClass('fa-spinner spinning');
-                $('#icnAdd').addClass('fa-plus');
-            }
-        }
-    }
-}
-
 function _getCoreNameForFileName(fileName) {
   const match = fileName.match(/\.([^\.]+)$/);
   const ext = match ? match[1] : '';
@@ -978,7 +924,9 @@ Error.stackTraceLimit = 200;
 function uploadData(fileData, fileName) {
   const core = _getCoreNameForFileName(fileName);
   if (core) {
-    $.getScript(core + '_libretro.js', () => {
+    const script = document.createElement('script');
+    script.src = core + '_libretro.js';
+    script.onload = () => {
       setupFileSystem("browser")
         .then(() => {
           const dataView = new Uint8Array(fileData);
@@ -1002,7 +950,8 @@ function uploadData(fileData, fileName) {
 
           initScene();
         });
-    });
+    };
+    document.body.appendChild(script);
   } else {
     console.warn('could not detect file file for', fileName);
   }
