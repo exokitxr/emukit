@@ -139,7 +139,7 @@ function initRenderer() {
     coverImg.onerror = err => {
       console.warn(err);
     };
-    coverImg.src = '/assets/img/drop.png';
+    coverImg.src = '/assets/img/cover.png';
     const mesh = new THREE.Mesh(defaultQuad, new THREE.ShaderMaterial({
 			uniforms: {
 				uTexture: {
@@ -150,7 +150,8 @@ function initRenderer() {
       vertexShader,
       fragmentShader,
       side: THREE.BackSide,
-      depthWrite: false,
+      depthTest: false,
+      // depthWrite: false,
       transparent: true,
       alphaTest: 0.9,
 		}));
@@ -330,10 +331,9 @@ function initScene() {
       color: 0x808080,
       // shading: THREE.FlatShading,
     });
-
     const consoleMesh = (() => {
       const object = new THREE.Object3D();
-      object.position.set(0, 1.5, 0.5);
+      object.position.set(0, 0.1, 0.5);
 
       const coreMesh = (() => {
         const geometry = concatBufferGeometry([
@@ -407,6 +407,39 @@ function initScene() {
           return mesh;
         })();
         object.add(buttonsMesh);
+
+        const tutorialMesh = (() => {
+          const texture = new THREE.Texture(
+            null,
+            THREE.UVMapping,
+            THREE.RepeatWrapping,
+            THREE.RepeatWrapping,
+            THREE.LinearFilter,
+            THREE.LinearFilter,
+            THREE.RGBAFormat,
+            THREE.UnsignedByteType,
+            1
+          );
+          const tutorialImg = new Image();
+          tutorialImg.onload = () => {
+            texture.image = tutorialImg;
+            texture.needsUpdate = true;
+          };
+          tutorialImg.onerror = err => {
+            console.warn(err);
+          };
+          tutorialImg.src = '/assets/img/tutorial.png';
+          const mesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(0.2, 0.2), new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            /// alphaTest: 0.5,
+          }));
+          mesh.position.set(0.2/2 - 0.05/2, 0, -0.05/2);
+          mesh.rotation.x = (-Math.PI/4)*1.5;
+          mesh.rotation.order = 'YXZ';
+          return mesh;
+        })();
+        object.add(tutorialMesh);
 
         return object;
       })();
