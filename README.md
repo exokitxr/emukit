@@ -1,10 +1,10 @@
 ## Emukit: Mixed Reality Emulator
 
-Based on [libretro](https://github.com/libretro/RetroArch)'s WebAssembly build.
+Based on [libretro](https://github.com/libretro/RetroArch)'s WebAssembly build. Runs best in [Exokit](webmixedreality/exokit).
 
-Runs best in [Exokit](webmixedreality/exokit).
+## Live site
 
-### [Live site](https://exokit.webmr.io/)
+https://exokit.webmr.io/
 
 ## Video demo
 
