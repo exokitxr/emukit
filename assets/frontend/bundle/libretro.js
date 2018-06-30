@@ -434,7 +434,7 @@ function initScene() {
             transparent: true,
             /// alphaTest: 0.5,
           }));
-          mesh.position.set(0.2/2 - 0.05/2, 0, -0.05/2);
+          mesh.position.set(-0.2/2 - 0.05/2, 0, -0.05/2);
           mesh.rotation.x = (-Math.PI/4)*1.5;
           mesh.rotation.order = 'YXZ';
           return mesh;
