@@ -960,6 +960,7 @@ window.addEventListener('drop', e => {
 
 var Module = {
     // noInitialRun: true,
+    noInitialRun: false,
     arguments: [
         '-v',
         // '/home/web_user/retroarch/userdata/content/downloads/sonic3.md',
