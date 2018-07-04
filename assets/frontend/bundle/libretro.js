@@ -891,13 +891,15 @@ function initScene() {
 
 function _getCoreNameForFileName(fileName) {
   const match = fileName.match(/\.([^\.]+)$/);
-  const ext = match ? match[1] : '';
+  const ext = match ? match[1].toLowerCase() : '';
   switch (ext) {
     case 'md':
       return 'genesis_plus_gx';
     case 'n64':
     case 'z64':
       return 'parallel_n64';
+    case 'cue':
+      return 'mednafen_psx';
     default: return null;
   }
 }
