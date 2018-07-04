@@ -123,7 +123,12 @@ function initRenderer() {
       1
     );
     texture.flipY = false;
-    const coverImg = new Image();
+
+    window.addEventListener("resize", function() {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    const coverImg = new Image(window.innerWidth, window.innerHeight);
     coverImg.onload = () => {
       texture.image = coverImg;
       texture.needsUpdate = true;
