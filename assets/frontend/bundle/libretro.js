@@ -27,21 +27,28 @@ function setupFileSystem(backend) {
   return Promise.all([
     fetch('/assets/frontend/bundle/.index-xhr').then(res => res.json()),
     fetch('/assets/cores/.index-xhr').then(res => res.json()),
+    fetch('/system/.index-xhr').then(res => res.json()),
     fetch('/assets/frontend/bundle/retroarch.cfg').then(res => res.arrayBuffer()),
-    // fetch('/assets/cores/sonic3.md').then(res => res.arrayBuffer()),
+    fetch('/system/scph5501.bin').then(res => res.arrayBuffer()),
   ])
   .then(xhrs => {
     /* create a mountable filesystem that will server as a root
        mountpoint for browserfs */
     var mfs = new BrowserFS.FileSystem.MountableFileSystem();
-    var afs = new BrowserFS.FileSystem.InMemory();
-    var xfs = new BrowserFS.FileSystem.XmlHttpRequest(xhrs[0], "/assets/frontend/bundle/");
+    var afs1 = new BrowserFS.FileSystem.InMemory();
+    var afs2 = new BrowserFS.FileSystem.InMemory();
+    var xfs1 = new BrowserFS.FileSystem.XmlHttpRequest(xhrs[0], "/assets/frontend/bundle/");
+    // var xfs2 = new BrowserFS.FileSystem.XmlHttpRequest(xhrs[2], "/system/");
 
     console.log("WEBPLAYER: initializing filesystem: " + backend);
-    mfs.mount('/home/web_user/retroarch/userdata', afs);
+    mfs.mount('/home/web_user/retroarch/userdata', afs1);
+    mfs.mount('/home/web_user/retroarch/system', afs2);
 
-    mfs.mount('/home/web_user/retroarch/bundle', xfs);
+    mfs.mount('/home/web_user/retroarch/bundle', xfs1);
+    // mfs.mount('/home/web_user/retroarch/system', xfs2);
+    // console.log('initialize 1', BrowserFS.initialize);
     BrowserFS.initialize(mfs);
+    // console.log('initialize 2');
     var BFS = new BrowserFS.EmscriptenFS();
     FS.mount(BFS, {
       root: '/home'
@@ -50,13 +57,26 @@ function setupFileSystem(backend) {
 
     (() => {
         const name = 'retroarch.cfg';
-        const dataView = new Uint8Array(xhrs[2]);
+        const dataView = new Uint8Array(xhrs[3]);
         FS.createDataFile('/', name, dataView, true, false);
 
         const data = FS.readFile(name, {
             encoding: 'binary'
         });
         FS.writeFile('/home/web_user/retroarch/userdata/' + name, data, {
+            encoding: 'binary'
+        });
+        FS.unlink(name);
+    })();
+    (() => {
+        const name = 'scph5501.bin';
+        const dataView = new Uint8Array(xhrs[4]);
+        FS.createDataFile('/', name, dataView, true, false);
+
+        const data = FS.readFile(name, {
+            encoding: 'binary'
+        });
+        FS.writeFile('/home/web_user/retroarch/system/' + name, data, {
             encoding: 'binary'
         });
         FS.unlink(name);
@@ -123,12 +143,7 @@ function initRenderer() {
       1
     );
     texture.flipY = false;
-
-    window.addEventListener("resize", function() {
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    const coverImg = new Image(window.innerWidth, window.innerHeight);
+    const coverImg = new Image();
     coverImg.onload = () => {
       texture.image = coverImg;
       texture.needsUpdate = true;
@@ -682,6 +697,7 @@ function initScene() {
         cleared = true;
       })(oldClear);
       Module.renderScene = () => {
+        return;
         if (cleared) {
           // oldClear.call(context, context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT | context.STENCIL_BUFFER_BIT);
           // context.disable(context.SCISSOR_TEST);
@@ -899,46 +915,12 @@ function _getCoreNameForFileName(fileName) {
     case 'z64':
       return 'parallel_n64';
     case 'cue':
-      return 'mednafen_psx';
+      // return 'pcsx_rearmed';
+      return 'mednafen_psx_hw';
     default: return null;
   }
 }
 Error.stackTraceLimit = 200;
-function uploadData(fileData, fileName) {
-  const core = _getCoreNameForFileName(fileName);
-  if (core) {
-    const script = document.createElement('script');
-    script.src = 'assets/frontend/bundle/' + core + '_libretro.js';
-    script.onload = () => {
-      setupFileSystem("browser")
-        .then(() => {
-          const dataView = new Uint8Array(fileData);
-          FS.createDataFile('/', fileName, dataView, true, false);
-
-          const data = FS.readFile(fileName, {
-            encoding: 'binary'
-          });
-          const filePath = '/home/web_user/retroarch/userdata/content/' + fileName;
-          FS.writeFile('/home/web_user/retroarch/userdata/content/' + fileName, data, {
-            encoding: 'binary'
-          });
-          FS.unlink(fileName);
-
-          const handle = GL.registerContext(Module.ctx, {
-            majorVersion: 1,
-            minorVersion: 0,
-          });
-          GL.makeContextCurrent(handle);
-          Module.arguments.push(filePath);
-
-          initScene();
-        });
-    };
-    document.body.appendChild(script);
-  } else {
-    console.warn('could not detect file file for', fileName);
-  }
-}
 
 window.addEventListener('dragover', e => {
     e.preventDefault();
@@ -946,17 +928,81 @@ window.addEventListener('dragover', e => {
 window.addEventListener('drop', e => {
   e.preventDefault();
 
-  const {files} = e.dataTransfer;
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    const fr = new FileReader();
-    fr.onload = () => {
-      uploadData(fr.result, file.name);
+  const files = Array.from(e.dataTransfer.files);
+  const mainFile = files.find(file => /\.(?:md|n64|z64|cue)$/i.test(file.name));
+  const mainFileName = mainFile ? mainFile.name : null;
+  const core = mainFileName ? _getCoreNameForFileName(mainFileName) : null;
+  if (core) {
+    const script = document.createElement('script');
+    script.src = 'assets/frontend/bundle/' + core + '_libretro.js';
+    script.onload = () => {
+      addRunDependency('load');
+
+      setupFileSystem('browser')
+        .then(() =>
+          Promise.all(
+            files.map(file =>
+              new Promise((accept, reject) => {
+                const fr = new FileReader();
+                fr.onload = () => {
+                  const fileData = fr.result;
+                  const fileName = file.name;
+
+                  const dataView = new Uint8Array(fileData);
+                  FS.createDataFile('/', fileName, dataView, true, false);
+
+                  const data = FS.readFile(fileName, {
+                    encoding: 'binary'
+                  });
+                  const filePath = '/home/web_user/retroarch/userdata/content/' + fileName;
+                  FS.writeFile('/home/web_user/retroarch/userdata/content/' + fileName, data, {
+                    encoding: 'binary'
+                  });
+                  FS.unlink(fileName);
+
+                  accept();
+                };
+                fr.onerror = err => {
+                  reject(err);
+                };
+                fr.readAsArrayBuffer(file);
+              })
+            )
+          )
+        )
+        .then(() => {
+          const handle = GL.registerContext(Module.ctx, {
+            majorVersion: 2,
+            minorVersion: 0,
+          });
+          GL.makeContextCurrent(handle);
+
+          const filePath = '/home/web_user/retroarch/userdata/content/' + mainFileName;
+          Module.arguments.push(filePath);
+          // Module.arguments = ['-h'];
+
+          // console.log('arguments', Module.arguments);
+
+          // initScene();
+
+          Module.ctx.booted = true;
+
+          console.log('load args', Module.arguments);
+
+          removeRunDependency('load');
+
+          Browser.setCanvasSize(Module.canvas.width, Module.canvas.height);
+
+          // run();
+          // Module.callMain(Module.arguments);
+        });
     };
-    fr.onerror = err => {
-      console.warn(err.stack);
+    script.onerror = err => {
+      reject(err);
     };
-    fr.readAsArrayBuffer(file);
+    document.body.appendChild(script);
+  } else {
+    reject(new Error('could not detect file for ' + mainFileName));
   }
 });
 
