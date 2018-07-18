@@ -1,5 +1,7 @@
 ## Emukit: Mixed Reality Emulator
 
+![Emukit logo](https://github.com/webmixedreality/emukit/raw/master/media/emukit-200.png "Emukit logo")
+
 Based on [libretro](https://github.com/libretro/RetroArch)'s WebAssembly build. Everything else is Javascript. Runs best in [Exokit](webmixedreality/exokit).
 
 ## Live site
