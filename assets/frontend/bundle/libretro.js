@@ -676,11 +676,13 @@ function initScene() {
 
     if (Module.vr) {
       let cleared = false;
-      const oldClear = context.clear;
-      context.clear = (oldClear => function() {
-        oldClear.apply(this, arguments);
+      const _wrap = oldFn => function() {
+        oldFn.apply(this, arguments);
         cleared = true;
-      })(oldClear);
+      };
+      context.clear = _wrap(context.clear);
+      // context.drawArrays = _wrap(context.drawArrays);
+      // context.drawElements = _wrap(context.drawElements);
       Module.renderScene = () => {
         if (cleared) {
           // oldClear.call(context, context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT | context.STENCIL_BUFFER_BIT);
