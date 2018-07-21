@@ -134,7 +134,6 @@ function initRenderer() {
       texture.needsUpdate = true;
 
       requestAnimationFrame(() => {
-        console.log('render');
         renderer.clear(true, true, true);
         scene.background = new THREE.Color(0xFFFFFF);
         renderer.render(scene, camera);
