@@ -1205,41 +1205,6 @@ function _getCoreNameForFileName(fileName) {
   }
 }
 Error.stackTraceLimit = 200;
-function uploadData(fileData, fileName) {
-  const core = _getCoreNameForFileName(fileName);
-  if (core) {
-    const script = document.createElement('script');
-    script.src = 'assets/frontend/bundle/' + core + '_libretro.js';
-    script.onload = () => {
-      setupFileSystem("browser")
-        .then(() => {
-          const dataView = new Uint8Array(fileData);
-          FS.createDataFile('/', fileName, dataView, true, false);
-
-          const data = FS.readFile(fileName, {
-            encoding: 'binary'
-          });
-          const filePath = '/home/web_user/retroarch/userdata/content/' + fileName;
-          FS.writeFile('/home/web_user/retroarch/userdata/content/' + fileName, data, {
-            encoding: 'binary'
-          });
-          FS.unlink(fileName);
-
-          const handle = GL.registerContext(Module.ctx, {
-            majorVersion: 1,
-            minorVersion: 0,
-          });
-          GL.makeContextCurrent(handle);
-          Module.arguments.push(filePath);
-
-          initScene();
-        });
-    };
-    document.body.appendChild(script);
-  } else {
-    console.warn('could not detect file file for', fileName);
-  }
-}
 
 window.addEventListener('dragover', e => {
     e.preventDefault();
@@ -1247,17 +1212,75 @@ window.addEventListener('dragover', e => {
 window.addEventListener('drop', e => {
   e.preventDefault();
 
-  const {files} = e.dataTransfer;
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    const fr = new FileReader();
-    fr.onload = () => {
-      uploadData(fr.result, file.name);
+  const files = Array.from(e.dataTransfer.files);
+  const mainFile = files.find(file => /\.(?:md|n64|z64|cue)$/i.test(file.name));
+  const mainFileName = mainFile ? mainFile.name : null;
+  const core = mainFileName ? _getCoreNameForFileName(mainFileName) : null;
+  if (core) {
+    const script = document.createElement('script');
+    script.src = 'assets/frontend/bundle/' + core + '_libretro.js';
+    script.onload = () => {
+      addRunDependency('load');
+
+      setupFileSystem()
+        .then(() =>
+          Promise.all(
+            files.map(file =>
+              new Promise((accept, reject) => {
+                const fr = new FileReader();
+                fr.onload = () => {
+                  const fileData = fr.result;
+                  const fileName = file.name;
+
+                  const dataView = new Uint8Array(fileData);
+                  FS.createDataFile('/', fileName, dataView, true, false);
+
+                  const data = FS.readFile(fileName, {
+                    encoding: 'binary'
+                  });
+                  const filePath = '/home/web_user/retroarch/userdata/content/' + fileName;
+                  FS.writeFile('/home/web_user/retroarch/userdata/content/' + fileName, data, {
+                    encoding: 'binary'
+                  });
+                  FS.unlink(fileName);
+
+                  accept();
+                };
+                fr.onerror = err => {
+                  reject(err);
+                };
+                fr.readAsArrayBuffer(file);
+              })
+            )
+          )
+        )
+        .then(() => {
+          const handle = GL.registerContext(Module.ctx, {
+            majorVersion: 1,
+            minorVersion: 0,
+          });
+          GL.makeContextCurrent(handle);
+
+          const filePath = '/home/web_user/retroarch/userdata/content/' + mainFileName;
+          Module.arguments.push(filePath);
+          // Module.arguments = ['-h'];
+
+          // console.log('arguments', Module.arguments);
+
+          initScene();
+
+          console.log('load args', Module.arguments);
+
+          removeRunDependency('load');
+        });
     };
-    fr.onerror = err => {
-      console.warn(err.stack);
+    script.onerror = err => {
+      console.warn(err);
     };
-    fr.readAsArrayBuffer(file);
+    document.body.appendChild(script);
+  } else {
+    const err = new Error('could not detect file for ' + mainFileName);
+    console.warn(err);
   }
 });
 
