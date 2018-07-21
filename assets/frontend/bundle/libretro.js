@@ -1283,7 +1283,8 @@ var Module = {
     display: null,
     leftEyeParameters: null,
     rightEyeParameters: null,
-    renderScene: () => {},
+    preRender: () => {},
+    postRender: () => {},
     totalDependencies: 0,
     monitorRunDependencies: function(left) {
         this.totalDependencies = Math.max(this.totalDependencies, left);
