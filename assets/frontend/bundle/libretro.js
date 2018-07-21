@@ -1256,7 +1256,7 @@ window.addEventListener('drop', e => {
         )
         .then(() => {
           const handle = GL.registerContext(Module.ctx, {
-            majorVersion: 1,
+            majorVersion: 2,
             minorVersion: 0,
           });
           GL.makeContextCurrent(handle);
