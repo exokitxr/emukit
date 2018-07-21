@@ -15,8 +15,6 @@ function setupFileSystem() {
     // fetch('/assets/cores/sonic3.md').then(res => res.arrayBuffer()),
   ])
   .then(xhrs => {
-    /* create a mountable filesystem that will server as a root
-       mountpoint for browserfs */
     var mfs = new BrowserFS.FileSystem.MountableFileSystem();
     var afs = new BrowserFS.FileSystem.InMemory();
     var xfs = new BrowserFS.FileSystem.XmlHttpRequest(xhrs[0], "/assets/frontend/bundle/");
