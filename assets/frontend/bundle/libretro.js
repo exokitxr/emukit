@@ -1198,7 +1198,9 @@ function _getCoreNameForFileName(fileName) {
     case 'z64':
       return 'parallel_n64';
     case 'cue':
-      return 'mednafen_psx';
+      // return 'pcsx_rearmed';
+      return 'pcsx_rearmed_mr';
+      // return 'mednafen_psx_hw';
     default: return null;
   }
 }
