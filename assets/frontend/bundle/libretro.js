@@ -93,6 +93,9 @@ let renderer = null;
 let scene = null;
 let camera = null;
 let screenQuad = null;
+let inUserFrame = true;
+let userState = null;
+let sceneState = null;
 function initRenderer() {
   if (navigator.xr) {
     delete navigator.xr;
@@ -183,6 +186,241 @@ function initRenderer() {
     return mesh;
   })();
   scene.add(screenQuad);
+
+  const oldBindVertexArray = context.bindVertexArray;
+  const oldUseProgram = context.useProgram;
+  const oldViewport = context.viewport;
+  const oldScissor = context.scissor;
+  const oldEnable = context.enable;
+  const oldDisable = context.disable;
+  const oldBindBuffer = context.bindBuffer;
+  const oldBindFramebuffer = context.bindFramebuffer;
+  const oldActiveTexture = context.activeTexture;
+  const oldBindTexture = context.bindTexture;
+  const oldClearColor = context.clearColor;
+  const oldColorMask = context.colorMask;
+  const oldDepthMask = context.depthMask;
+  const oldFrontFace = context.frontFace;
+  const oldCullFace = context.cullFace;
+  const oldDepthFunc = context.depthFunc;
+  const oldDepthRange = context.depthRange;
+  const _wrapContext = (context, predicate) => {
+    let vertexArrayValue = null;
+    context.bindVertexArray = (bindVertexArray => function(newVertexArrayValue) {
+      if (predicate()) {
+        vertexArrayValue = newVertexArrayValue;
+      }
+      return bindVertexArray.apply(this, arguments);
+    })(context.bindVertexArray);
+    let program = null;
+    context.useProgram = (useProgram => function(newProgram) {
+      if (predicate()) {
+        program = newProgram;
+      }
+      return useProgram.apply(this, arguments);
+    })(context.useProgram);
+    const viewportValue = [null, null, null, null];
+    context.viewport = (viewport => function(x, y, w, h) {
+      if (predicate()) {
+        viewportValue[0] = x;
+        viewportValue[1] = y;
+        viewportValue[2] = w;
+        viewportValue[3] = h;
+      }
+      return viewport.apply(this, arguments);
+    })(context.viewport);
+    const scissorValue = [null, null, null, null];
+    context.scissor = (scissor => function(x, y, w, h) {
+      if (predicate()) {
+        scissorValue[0] = x;
+        scissorValue[1] = y;
+        scissorValue[2] = w;
+        scissorValue[3] = h;
+      }
+      return scissor.apply(this, arguments);
+    })(context.scissor);
+    const enabled = new Map();
+    context.enable = (enable => function(flag) {
+      if (predicate()) {
+        enabled.set(flag, true);
+      }
+      return enable.apply(this, arguments);
+    })(context.enable);
+    context.disable = (disable => function(flag) {
+      if (predicate()) {
+        enabled.set(flag, false);
+      }
+      return disable.apply(this, arguments);
+    })(context.disable);
+    const buffers = new Map();
+    context.bindBuffer = (bindBuffer => function(target, buffer) {
+      if (predicate()) {
+        buffers.set(target, buffer);
+      }
+      return bindBuffer.apply(this, arguments);
+    })(context.bindBuffer);
+    const framebuffers = new Map();
+    context.bindFramebuffer = (bindFramebuffer => function(target, framebuffer) {
+      if (predicate()) {
+        framebuffers.set(target, framebuffer);
+      }
+      return bindFramebuffer.apply(this, arguments);
+    })(context.bindFramebuffer);
+    let activeTextureValue = null;
+    context.activeTexture = (activeTexture => function(newActiveTextureValue) {
+      if (predicate()) {
+        activeTextureValue = newActiveTextureValue;
+      }
+      return activeTexture.apply(this, arguments);
+    })(context.activeTexture);
+    const textures = new Map();
+    context.bindTexture = (bindTexture => function(target, texture) {
+      if (predicate()) {
+        textures.set(target, texture);
+      }
+      return bindTexture.apply(this, arguments);
+    })(context.bindTexture);
+    const clearColorValue = [null, null, null, null];
+    context.clearColor = (clearColor => function(r, g, b, a) {
+      if (predicate()) {
+        clearColorValue[0] = r;
+        clearColorValue[1] = g;
+        clearColorValue[2] = b;
+        clearColorValue[3] = a;
+      }
+      return clearColor.apply(this, arguments);
+    })(context.clearColor);
+    const colorMaskValue = [null, null, null, null];
+    context.colorMask = (colorMask => function(r, g, b, a) {
+      if (predicate()) {
+        colorMaskValue[0] = r;
+        colorMaskValue[1] = g;
+        colorMaskValue[2] = b;
+        colorMaskValue[3] = a;
+      }
+      return colorMask.apply(this, arguments);
+    })(context.colorMask);
+    let depthMaskValue = null;
+    context.depthMask = (depthMask => function(newDepthMask) {
+      if (predicate()) {
+        depthMaskValue = newDepthMask;
+      }
+      return depthMask.apply(this, arguments);
+    })(context.depthMask);
+    let frontFaceValue = null;
+    context.frontFace = (frontFace => function(newFrontFace) {
+      if (predicate()) {
+        frontFaceValue = newFrontFace;
+      }
+      return frontFace.apply(this, arguments);
+    })(context.frontFace);
+    let cullFaceValue = null;
+    context.cullFace = (cullFace => function(newFrontFace) {
+      if (predicate()) {
+        cullFaceValue = newCullFace;
+      }
+      return cullFace.apply(this, arguments);
+    })(context.cullFace);
+    let depthFuncValue = null;
+    context.depthFunc = (depthFunc => function(newDepthFunc) {
+      if (predicate()) {
+        depthFuncValue = newDepthFunc;
+      }
+      return depthFunc.apply(this, arguments);
+    })(context.depthFunc);
+    const depthRangeValue = [null, null];
+    context.depthRange = (depthRange => function(near, far) {
+      if (predicate()) {
+        depthRangeValue[0] = near;
+        depthRangeValue[1] = far;
+      }
+      return depthRange.apply(this, arguments);
+    })(context.depthRange);
+
+    return {
+      restore() {
+        if (vertexArrayValue !== null) {
+          oldBindVertexArray.call(context, vertexArrayValue);
+        }
+        if (program !== null) {
+          oldUseProgram.call(context, program);
+        }
+        if (viewportValue[0] !== null) {
+          oldViewport.call(context, viewportValue[0], viewportValue[1], viewportValue[2], viewportValue[3]);
+        }
+        if (scissorValue[0] !== null) {
+          oldScissor.call(context, scissorValue[0], scissorValue[1], scissorValue[2], scissorValue[3]);
+        }
+        for (const k of enabled.keys()) {
+          const v = enabled.get(k);
+          if (v) {
+            oldEnable.call(context, k);
+          } else {
+            oldDisable.call(context, k);
+          }
+        }
+        for (const k of buffers.keys()) {
+          const v = buffers.get(k);
+          oldBindBuffer.call(context, k, v);
+        }
+        for (const k of framebuffers.keys()) {
+          const v = framebuffers.get(k);
+          oldBindFramebuffer.call(context, k, v);
+        }
+        if (activeTextureValue !== null) {
+          oldActiveTexture.call(context, activeTextureValue);
+        }
+        for (const k of textures.keys()) {
+          const v = textures.get(k);
+          oldBindTexture.call(context, k, v);
+        }
+        if (clearColorValue[0] !== null) {
+          oldClearColor.call(context, clearColorValue[0], clearColorValue[1], clearColorValue[2], clearColorValue[3]);
+        }
+        if (colorMaskValue[0] !== null) {
+          oldColorMask.call(context, colorMaskValue[0], colorMaskValue[1], colorMaskValue[2], colorMaskValue[3]);
+        }
+        if (depthMaskValue !== null) {
+          oldDepthMask.call(context, depthMaskValue);
+        }
+        if (frontFaceValue !== null) {
+          oldFrontFace.call(context, frontFaceValue);
+        }
+        if (cullFaceValue !== null) {
+          oldCullFace.call(context, cullFaceValue);
+        }
+        if (depthFuncValue !== null) {
+          oldDepthFunc.call(context, depthFuncValue);
+        }
+        if (depthRangeValue[0] !== null) {
+          oldDepthRange.call(context, depthRangeValue[0], depthRangeValue[1]);
+        }
+      },
+      /* clear() {
+        vertexArrayValue = null;
+        viewportValue[0] = null;
+        viewportValue[1] = null;
+        viewportValue[2] = null;
+        viewportValue[3] = null;
+        scissorValue[0] = null;
+        scissorValue[1] = null;
+        scissorValue[2] = null;
+        scissorValue[3] = null;
+        enabled.clear();
+        buffers.clear();
+        framebuffers.clear();
+        textures.clear();
+        activeTextureValue = null;
+        program = null;
+        clearColorValue[0] = null;
+        clearColorValue[1] = null;
+        clearColorValue[2] = null;
+        clearColorValue[3] = null;
+      }, */
+    };
+  };
+  userState = _wrapContext(context, () => inUserFrame);
+  sceneState = _wrapContext(context, () => !inUserFrame);
 }
 function initScene() {
   const {canvas, ctx: context} = Module;
@@ -695,196 +933,226 @@ function initScene() {
     };
 
     if (Module.vr) {
-      let cleared = false;
+      inUserFrame = false;
+      renderer.state.reset();
+      inUserFrame = true;
+
+      /* let userDrew = false;
       const _wrap = oldFn => function() {
         oldFn.apply(this, arguments);
-        cleared = true;
+        if (!userDrew && inUserFrame) {
+          userDrew = true;
+        }
       };
       context.clear = _wrap(context.clear);
-      // context.drawArrays = _wrap(context.drawArrays);
-      // context.drawElements = _wrap(context.drawElements);
-      Module.renderScene = () => {
-        if (cleared) {
+      context.drawArrays = _wrap(context.drawArrays);
+      context.drawElements = _wrap(context.drawElements); */
+
+      Module.preRender = () => {
+        // if (userDrew) {
+          inUserFrame = false;
+          renderer.clear(true, true, true);
+          inUserFrame = true;
+        // }
+      };
+
+      /* console.log('render 1');
+      function recurse() {
+        console.log('render 2');
+        Module.preRender();
+        cleared = true;
+        Module.postRender();
+
+        requestAnimationFrame(recurse);
+      }
+      requestAnimationFrame(recurse); */
+
+      Module.postRender = () => {
+        const gamepads = navigator.getGamepads();
+        const _updateControls = () => {
+          for (let i = 0; i < gamepads.length; i++) {
+            const gamepad = gamepads[i];
+            if (gamepad) {
+              const pressed = gamepad.buttons[1].pressed;
+              const grabbed = gamepad.buttons[2].pressed;
+              const menuPressed = gamepad.buttons[3].pressed;
+              const padPressed = gamepad.buttons[0].pressed ? _getGamepadDirection(gamepad) : null;
+
+              const lastPressed = lastPresseds[i];
+              lastPresseds[i] = pressed;
+              if (pressed && !lastPressed) {
+                if (i === 0) {
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: 81,
+                    which: 81,
+                    charCode: 0,
+                    key: 'Q',
+                    code: 'KeyQ',
+                  });
+                  // console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                } else {
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: 90,
+                    which: 90,
+                    charCode: 0,
+                    key: 'Z',
+                    code: 'KeyZ',
+                  });
+                  // console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                }
+              } else if (!pressed && lastPressed) {
+                if (i === 0) {
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: 81,
+                    which: 81,
+                    charCode: 0,
+                    key: 'Q',
+                    code: 'KeyQ',
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                } else {
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: 90,
+                    which: 90,
+                    charCode: 0,
+                    key: 'Z',
+                    code: 'KeyZ',
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                }
+              }
+
+              const lastGrabbed = lastGrabbeds[i];
+              lastGrabbeds[i] = grabbed;
+              if (grabbed && !lastGrabbed) {
+                if (i === 0) {
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: 13,
+                    which: 13,
+                    charCode: 0,
+                    key: 'Enter',
+                    code: 'Enter',
+                  });
+                  // console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                } else {
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: 65,
+                    which: 65,
+                    charCode: 0,
+                    key: 'A',
+                    code: 'KeyA',
+                  });
+                  // console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                }
+              } else if (!grabbed && lastGrabbed) {
+                if (i === 0) {
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: 13,
+                    which: 13,
+                    charCode: 0,
+                    key: 'Enter',
+                    code: 'Enter',
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                } else {
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: 65,
+                    which: 65,
+                    charCode: 0,
+                    key: 'A',
+                    code: 'KeyA',
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                }
+              }
+
+              const lastPadPressed = lastPadPresseds[i];
+              lastPadPresseds[i] = padPressed;
+              if (padPressed && !lastPadPressed) {
+                const directionSpecs = PAD_KEYS[i][padPressed];
+                for (let j = 0; j < directionSpecs.length; j++) {
+                  const directionSpec = directionSpecs[j];
+                  const {keyCode, which, charCode, key, code} = directionSpec;
+
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode,
+                    which,
+                    charCode,
+                    key,
+                    code,
+                  });
+                  // console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                }
+              } else if (!padPressed && lastPadPressed) {
+                const directionSpecs = PAD_KEYS[i][lastPadPressed];
+                for (let j = 0; j < directionSpecs.length; j++) {
+                  const directionSpec = directionSpecs[j];
+                  const {keyCode, which, charCode, key, code} = directionSpec;
+
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode,
+                    which,
+                    charCode,
+                    key,
+                    code,
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                }
+              } else if (padPressed && lastPadPressed && padPressed !== lastPadPressed) {
+                const lastDirectionSpecs = PAD_KEYS[i][lastPadPressed];
+                for (let j = 0; j < lastDirectionSpecs.length; j++) {
+                  const lastDirectionSpec = lastDirectionSpecs[j];
+                  const {keyCode, which, charCode, key, code} = lastDirectionSpec;
+
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode,
+                    which,
+                    charCode,
+                    key,
+                    code,
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                }
+
+                const directionSpecs = PAD_KEYS[i][padPressed];
+                for (let j = 0; j < directionSpecs.length; j++) {
+                  const directionSpec = directionSpecs[j];
+                  const {keyCode, which, charCode, key, code} = directionSpec;
+
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode,
+                    which,
+                    charCode,
+                    key,
+                    code,
+                  });
+                  // console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                }
+              }
+            }
+          }
+        };
+        _updateControls();
+
+        // if (userDrew) {
+          inUserFrame = false;
+
           // oldClear.call(context, context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT | context.STENCIL_BUFFER_BIT);
           // context.disable(context.SCISSOR_TEST);
           // context.disable(context.STENCIL_TEST);
 
-          const gamepads = navigator.getGamepads();
-          const _updateControls = () => {
-            for (let i = 0; i < gamepads.length; i++) {
-              const gamepad = gamepads[i];
-              if (gamepad) {
-                const pressed = gamepad.buttons[1].pressed;
-                const grabbed = gamepad.buttons[2].pressed;
-                const menuPressed = gamepad.buttons[3].pressed;
-                const padPressed = gamepad.buttons[0].pressed ? _getGamepadDirection(gamepad) : null;
-
-                const lastPressed = lastPresseds[i];
-                lastPresseds[i] = pressed;
-                if (pressed && !lastPressed) {
-                  if (i === 0) {
-                    const keydownEvent = new KeyboardEvent('keydown', {
-                      keyCode: 81,
-                      which: 81,
-                      charCode: 0,
-                      key: 'Q',
-                      code: 'KeyQ',
-                    });
-                    // console.log('dispatch', keydownEvent.key);
-                    window.document.dispatchEvent(keydownEvent);
-                  } else {
-                    const keydownEvent = new KeyboardEvent('keydown', {
-                      keyCode: 90,
-                      which: 90,
-                      charCode: 0,
-                      key: 'Z',
-                      code: 'KeyZ',
-                    });
-                    // console.log('dispatch', keydownEvent.key);
-                    window.document.dispatchEvent(keydownEvent);
-                  }
-                } else if (!pressed && lastPressed) {
-                  if (i === 0) {
-                    const keyupEvent = new KeyboardEvent('keyup', {
-                      keyCode: 81,
-                      which: 81,
-                      charCode: 0,
-                      key: 'Q',
-                      code: 'KeyQ',
-                    });
-                    // console.log('dispatch', keyupEvent.key);
-                    window.document.dispatchEvent(keyupEvent);
-                  } else {
-                    const keyupEvent = new KeyboardEvent('keyup', {
-                      keyCode: 90,
-                      which: 90,
-                      charCode: 0,
-                      key: 'Z',
-                      code: 'KeyZ',
-                    });
-                    // console.log('dispatch', keyupEvent.key);
-                    window.document.dispatchEvent(keyupEvent);
-                  }
-                }
-
-                const lastGrabbed = lastGrabbeds[i];
-                lastGrabbeds[i] = grabbed;
-                if (grabbed && !lastGrabbed) {
-                  if (i === 0) {
-                    const keydownEvent = new KeyboardEvent('keydown', {
-                      keyCode: 13,
-                      which: 13,
-                      charCode: 0,
-                      key: 'Enter',
-                      code: 'Enter',
-                    });
-                    // console.log('dispatch', keydownEvent.key);
-                    window.document.dispatchEvent(keydownEvent);
-                  } else {
-                    const keydownEvent = new KeyboardEvent('keydown', {
-                      keyCode: 65,
-                      which: 65,
-                      charCode: 0,
-                      key: 'A',
-                      code: 'KeyA',
-                    });
-                    // console.log('dispatch', keydownEvent.key);
-                    window.document.dispatchEvent(keydownEvent);
-                  }
-                } else if (!grabbed && lastGrabbed) {
-                  if (i === 0) {
-                    const keyupEvent = new KeyboardEvent('keyup', {
-                      keyCode: 13,
-                      which: 13,
-                      charCode: 0,
-                      key: 'Enter',
-                      code: 'Enter',
-                    });
-                    // console.log('dispatch', keyupEvent.key);
-                    window.document.dispatchEvent(keyupEvent);
-                  } else {
-                    const keyupEvent = new KeyboardEvent('keyup', {
-                      keyCode: 65,
-                      which: 65,
-                      charCode: 0,
-                      key: 'A',
-                      code: 'KeyA',
-                    });
-                    // console.log('dispatch', keyupEvent.key);
-                    window.document.dispatchEvent(keyupEvent);
-                  }
-                }
-
-                const lastPadPressed = lastPadPresseds[i];
-                lastPadPresseds[i] = padPressed;
-                if (padPressed && !lastPadPressed) {
-                  const directionSpecs = PAD_KEYS[i][padPressed];
-                  for (let j = 0; j < directionSpecs.length; j++) {
-                    const directionSpec = directionSpecs[j];
-                    const {keyCode, which, charCode, key, code} = directionSpec;
-
-                    const keydownEvent = new KeyboardEvent('keydown', {
-                      keyCode,
-                      which,
-                      charCode,
-                      key,
-                      code,
-                    });
-                    // console.log('dispatch', keydownEvent.key);
-                    window.document.dispatchEvent(keydownEvent);
-                  }
-                } else if (!padPressed && lastPadPressed) {
-                  const directionSpecs = PAD_KEYS[i][lastPadPressed];
-                  for (let j = 0; j < directionSpecs.length; j++) {
-                    const directionSpec = directionSpecs[j];
-                    const {keyCode, which, charCode, key, code} = directionSpec;
-
-                    const keyupEvent = new KeyboardEvent('keyup', {
-                      keyCode,
-                      which,
-                      charCode,
-                      key,
-                      code,
-                    });
-                    // console.log('dispatch', keyupEvent.key);
-                    window.document.dispatchEvent(keyupEvent);
-                  }
-                } else if (padPressed && lastPadPressed && padPressed !== lastPadPressed) {
-                  const lastDirectionSpecs = PAD_KEYS[i][lastPadPressed];
-                  for (let j = 0; j < lastDirectionSpecs.length; j++) {
-                    const lastDirectionSpec = lastDirectionSpecs[j];
-                    const {keyCode, which, charCode, key, code} = lastDirectionSpec;
-
-                    const keyupEvent = new KeyboardEvent('keyup', {
-                      keyCode,
-                      which,
-                      charCode,
-                      key,
-                      code,
-                    });
-                    // console.log('dispatch', keyupEvent.key);
-                    window.document.dispatchEvent(keyupEvent);
-                  }
-
-                  const directionSpecs = PAD_KEYS[i][padPressed];
-                  for (let j = 0; j < directionSpecs.length; j++) {
-                    const directionSpec = directionSpecs[j];
-                    const {keyCode, which, charCode, key, code} = directionSpec;
-
-                    const keydownEvent = new KeyboardEvent('keydown', {
-                      keyCode,
-                      which,
-                      charCode,
-                      key,
-                      code,
-                    });
-                    // console.log('dispatch', keydownEvent.key);
-                    window.document.dispatchEvent(keydownEvent);
-                  }
-                }
-              }
-            }
-          };
           const _updateGamepadMeshes = () => {
             for (let i = 0; i < gamepads.length; i++) {
               const gamepad = gamepads[i];
@@ -896,16 +1164,25 @@ function initScene() {
               }
             }
           };
-          _updateControls();
           _updateGamepadMeshes();
 
-          // console.log('overlay 1');
-          renderer.state.reset();
+          // console.log('--------overlay 1');
+          // console.log('--------restore scene');
+          sceneState.restore();
+          // console.log('--------reset scene');
+          // renderer.state.reset(); // XXX
+          // console.log('--------render scene');
+          context.bindVertexArray(0);
+          // renderer.clearDepth();
+          // renderer.clearStencil();
           renderer.render(scene, camera);
-          // console.log('overlay 2');
+          // console.log('--------restore user');
+          userState.restore();
+          // console.log('--------overlay 2');
 
-          cleared = false;
-        }
+          userDrew = false;
+          inUserFrame = true;
+        // }
       };
       // Module.renderScene();
     }
