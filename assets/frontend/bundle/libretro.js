@@ -5,7 +5,9 @@
  */
 var BrowserFS = BrowserFS;
 
-function setupFileSystem(backend) {
+zip.workerScriptsPath = '/assets/frontend/bundle/js/';
+
+function setupFileSystem() {
   return Promise.all([
     fetch('/assets/frontend/bundle/.index-xhr').then(res => res.json()),
     fetch('/assets/cores/.index-xhr').then(res => res.json()),
