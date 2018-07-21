@@ -5,24 +5,6 @@
  */
 var BrowserFS = BrowserFS;
 
-function cleanupStorage() {
-    localStorage.clear();
-    if (BrowserFS.FileSystem.IndexedDB.isAvailable() && false) {
-        var req = indexedDB.deleteDatabase("RetroArch");
-        req.onsuccess = function() {
-            console.log("Deleted database successfully");
-        };
-        req.onerror = function() {
-            console.log("Couldn't delete database");
-        };
-        req.onblocked = function() {
-            console.log("Couldn't delete database due to the operation being blocked");
-        };
-    }
-
-    document.getElementById("btnClean").disabled = true;
-}
-
 function setupFileSystem(backend) {
   return Promise.all([
     fetch('/assets/frontend/bundle/.index-xhr').then(res => res.json()),
