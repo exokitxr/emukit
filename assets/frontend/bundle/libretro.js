@@ -10,38 +10,77 @@ zip.workerScriptsPath = '/assets/frontend/bundle/js/';
 function setupFileSystem() {
   return Promise.all([
     fetch('/assets/frontend/bundle/.index-xhr').then(res => res.json()),
-    fetch('/assets/cores/.index-xhr').then(res => res.json()),
+    // fetch('/assets/cores/.index-xhr').then(res => res.json()),
+    // fetch('/system/.index-xhr').then(res => res.json()),
     fetch('/assets/frontend/bundle/retroarch.cfg').then(res => res.arrayBuffer()),
-    // fetch('/assets/cores/sonic3.md').then(res => res.arrayBuffer()),
+    fetch('https://www.emuparadise.me/biosfiles/PS1_Bios_SCPH1001.zip')
+      .then(res => res.blob())
+      .then(blob => new Promise((accept, reject) => {
+        zip.createReader(new zip.BlobReader(blob), zipReader => {
+          zipReader.getEntries(entries => {
+            const entry = entries.find(entry => /scph1001.bin/i.test(entry.filename));
+            entry.getData(new zip.BlobWriter('application/octet-stream'), blob => {
+              zipReader.close();
+
+              const fr = new FileReader();
+              fr.onload = e => {
+                accept(e.target.result);
+              };
+              fr.onerror = err => {
+                reject(err);
+              };
+              fr.readAsArrayBuffer(blob);
+            });
+          });
+        }, err => {
+          reject(err);
+        });
+      })),
+    // fetch('/system/scph5501.bin').then(res => res.arrayBuffer()),
   ])
   .then(xhrs => {
     var mfs = new BrowserFS.FileSystem.MountableFileSystem();
-    var afs = new BrowserFS.FileSystem.InMemory();
-    var xfs = new BrowserFS.FileSystem.XmlHttpRequest(xhrs[0], "/assets/frontend/bundle/");
+    var afs1 = new BrowserFS.FileSystem.InMemory();
+    var afs2 = new BrowserFS.FileSystem.InMemory();
+    var xfs1 = new BrowserFS.FileSystem.XmlHttpRequest(xhrs[0], "/assets/frontend/bundle/");
 
-    console.log("WEBPLAYER: initializing filesystem: " + backend);
-    mfs.mount('/home/web_user/retroarch/userdata', afs);
+    console.log('WEBPLAYER: initializing filesystem');
+    mfs.mount('/home/web_user/retroarch/userdata', afs1);
+    mfs.mount('/home/web_user/retroarch/system', afs2);
 
-    mfs.mount('/home/web_user/retroarch/bundle', xfs);
+    mfs.mount('/home/web_user/retroarch/bundle', xfs1);
     BrowserFS.initialize(mfs);
     var BFS = new BrowserFS.EmscriptenFS();
     FS.mount(BFS, {
       root: '/home'
     }, '/home');
-    console.log("WEBPLAYER: " + backend + " filesystem initialization successful");
+    console.log('WEBPLAYER: filesystem initialization successful');
 
     (() => {
-        const name = 'retroarch.cfg';
-        const dataView = new Uint8Array(xhrs[2]);
-        FS.createDataFile('/', name, dataView, true, false);
+      const name = 'retroarch.cfg';
+      const dataView = new Uint8Array(xhrs[1]);
+      FS.createDataFile('/', name, dataView, true, false);
 
-        const data = FS.readFile(name, {
-            encoding: 'binary'
-        });
-        FS.writeFile('/home/web_user/retroarch/userdata/' + name, data, {
-            encoding: 'binary'
-        });
-        FS.unlink(name);
+      const data = FS.readFile(name, {
+        encoding: 'binary',
+      });
+      FS.writeFile('/home/web_user/retroarch/userdata/' + name, data, {
+        encoding: 'binary',
+      });
+      FS.unlink(name);
+    })();
+    (() => {
+      const name = 'scph5501.bin';
+      const dataView = new Uint8Array(xhrs[2]);
+      FS.createDataFile('/', name, dataView, true, false);
+
+      const data = FS.readFile(name, {
+        encoding: 'binary',
+      });
+      FS.writeFile('/home/web_user/retroarch/system/' + name, data, {
+        encoding: 'binary',
+      });
+      FS.unlink(name);
     })();
 
     // FS.mkdir('/home/web_user/retroarch/userdata/states');
