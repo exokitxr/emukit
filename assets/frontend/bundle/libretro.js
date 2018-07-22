@@ -1159,7 +1159,7 @@ function initScene() {
           userState.restore();
           // console.log('--------overlay 2');
 
-          userDrew = false;
+          // userDrew = false;
           inUserFrame = true;
         // }
       };
