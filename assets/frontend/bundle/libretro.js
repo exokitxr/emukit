@@ -396,27 +396,6 @@ function initRenderer() {
           oldDepthRange.call(context, depthRangeValue[0], depthRangeValue[1]);
         }
       },
-      /* clear() {
-        vertexArrayValue = null;
-        viewportValue[0] = null;
-        viewportValue[1] = null;
-        viewportValue[2] = null;
-        viewportValue[3] = null;
-        scissorValue[0] = null;
-        scissorValue[1] = null;
-        scissorValue[2] = null;
-        scissorValue[3] = null;
-        enabled.clear();
-        buffers.clear();
-        framebuffers.clear();
-        textures.clear();
-        activeTextureValue = null;
-        program = null;
-        clearColorValue[0] = null;
-        clearColorValue[1] = null;
-        clearColorValue[2] = null;
-        clearColorValue[3] = null;
-      }, */
     };
   };
   userState = _wrapContext(context, () => inUserFrame);
