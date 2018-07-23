@@ -1211,7 +1211,8 @@ function _getCoreNameForFileName(fileName) {
       return 'genesis_plus_gx';
     case 'n64':
     case 'z64':
-      return 'parallel_n64';
+      // return 'parallel_n64';
+      return 'parallel_n64_mr';
     case 'cue':
       // return 'pcsx_rearmed';
       return 'pcsx_rearmed_mr';
