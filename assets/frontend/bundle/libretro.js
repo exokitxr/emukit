@@ -849,6 +849,42 @@ function initScene() {
     const RIGHT_PAD_KEYS = {
       left: [
         {
+          keyCode: 65,
+          which: 65,
+          charCode: 0,
+          key: 'A',
+          code: 'KeyA',
+        },
+      ],
+      right: [
+        {
+          keyCode: 88,
+          which: 88,
+          charCode: 0,
+          key: 'X',
+          code: 'KeyX',
+        },
+      ],
+      up: [
+        {
+          keyCode: 83,
+          which: 83,
+          charCode: 0,
+          key: 'S',
+          code: 'KeyS',
+        },
+      ],
+      down: [
+        {
+          keyCode: 90,
+          which: 90,
+          charCode: 0,
+          key: 'Z',
+          code: 'KeyZ',
+        },
+      ],
+      /* left: [
+        {
           keyCode: 49,
           which: 49,
           charCode: 0,
@@ -882,7 +918,7 @@ function initScene() {
           key: '2',
           code: 'Digit2',
         },
-      ],
+      ], */
       upLeft: null,
       upRight: null,
       downLeft: null,
