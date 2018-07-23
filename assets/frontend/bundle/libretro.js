@@ -315,7 +315,7 @@ function initRenderer() {
       return frontFace.apply(this, arguments);
     })(context.frontFace);
     let cullFaceValue = null;
-    context.cullFace = (cullFace => function(newFrontFace) {
+    context.cullFace = (cullFace => function(newCullFace) {
       if (predicate()) {
         cullFaceValue = newCullFace;
       }
