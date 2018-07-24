@@ -89,6 +89,7 @@ function setupFileSystem() {
   });
 }
 
+let core = null;
 let renderer = null;
 let scene = null;
 let camera = null;
@@ -1231,7 +1232,7 @@ window.addEventListener('drop', e => {
   const files = Array.from(e.dataTransfer.files);
   const mainFile = files.find(file => /\.(?:md|n64|z64|cue)$/i.test(file.name));
   const mainFileName = mainFile ? mainFile.name : null;
-  const core = mainFileName ? _getCoreNameForFileName(mainFileName) : null;
+  core = mainFileName ? _getCoreNameForFileName(mainFileName) : null;
   if (core) {
     const script = document.createElement('script');
     script.src = 'assets/frontend/bundle/' + core + '_libretro.js';
