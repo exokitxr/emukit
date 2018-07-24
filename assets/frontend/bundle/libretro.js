@@ -969,9 +969,10 @@ function initScene() {
       context.drawArrays = _wrap(context.drawArrays);
       context.drawElements = _wrap(context.drawElements);
 
-      Module.preRender = () => {
+      Module.preRender = (preRender => function() {
         userState.restore();
-      };
+        preRender.apply(this, arguments);
+      })(Module.preRender);
 
       /* console.log('render 1');
       function recurse() {
@@ -984,7 +985,7 @@ function initScene() {
       }
       requestAnimationFrame(recurse); */
 
-      Module.postRender = () => {
+      Module.postRender = (postRender => function() {
         const gamepads = navigator.getGamepads();
         const _updateControls = () => {
           for (let i = 0; i < gamepads.length; i++) {
@@ -1198,7 +1199,9 @@ function initScene() {
           userDrew = false;
           inUserFrame = true;
         }
-      };
+
+        postRender.apply(this, arguments);
+      })(Module.postRender);
       // Module.renderScene();
     }
 }
