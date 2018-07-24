@@ -964,13 +964,13 @@ function initScene() {
       context.drawArrays = _wrap(context.drawArrays);
       context.drawElements = _wrap(context.drawElements); */
 
-      Module.preRender = () => {
-        // if (userDrew) {
+      /* Module.preRender = () => {
+        if (userDrew) {
           inUserFrame = false;
           renderer.clear(true, true, true);
           inUserFrame = true;
-        // }
-      };
+        }
+      }; */
 
       /* console.log('render 1');
       function recurse() {
