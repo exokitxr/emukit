@@ -97,6 +97,7 @@ let screenQuad = null;
 let inUserFrame = true;
 let userState = null;
 let sceneState = null;
+let userVao = null;
 function initRenderer() {
   if (navigator.xr) {
     delete navigator.xr;
@@ -950,8 +951,12 @@ function initScene() {
 
     if (Module.vr) {
       inUserFrame = false;
+      context.bindVertexArray(0);
       renderer.state.reset();
       inUserFrame = true;
+
+      userVao = context.createVertexArray();
+      context.bindVertexArray(userVao);
 
       /* let userDrew = false;
       const _wrap = oldFn => function() {
@@ -1184,7 +1189,6 @@ function initScene() {
           // console.log('--------reset scene');
           // renderer.state.reset(); // XXX
           // console.log('--------render scene');
-          context.bindVertexArray(0);
           // renderer.clearDepth();
           // renderer.clearStencil();
           renderer.render(scene, camera);
