@@ -964,13 +964,9 @@ function initScene() {
       context.drawArrays = _wrap(context.drawArrays);
       context.drawElements = _wrap(context.drawElements); */
 
-      /* Module.preRender = () => {
-        if (userDrew) {
-          inUserFrame = false;
-          renderer.clear(true, true, true);
-          inUserFrame = true;
-        }
-      }; */
+      Module.preRender = () => {
+        userState.restore();
+      };
 
       /* console.log('render 1');
       function recurse() {
@@ -1193,7 +1189,6 @@ function initScene() {
           // renderer.clearStencil();
           renderer.render(scene, camera);
           // console.log('--------restore user');
-          userState.restore();
           // console.log('--------overlay 2');
 
           // userDrew = false;
