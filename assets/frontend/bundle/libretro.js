@@ -958,7 +958,7 @@ function initScene() {
       userVao = context.createVertexArray();
       context.bindVertexArray(userVao);
 
-      /* let userDrew = false;
+      let userDrew = false;
       const _wrap = oldFn => function() {
         oldFn.apply(this, arguments);
         if (!userDrew && inUserFrame) {
@@ -967,7 +967,7 @@ function initScene() {
       };
       context.clear = _wrap(context.clear);
       context.drawArrays = _wrap(context.drawArrays);
-      context.drawElements = _wrap(context.drawElements); */
+      context.drawElements = _wrap(context.drawElements);
 
       Module.preRender = () => {
         userState.restore();
@@ -1163,7 +1163,7 @@ function initScene() {
         };
         _updateControls();
 
-        // if (userDrew) {
+        if (userDrew) {
           inUserFrame = false;
 
           // oldClear.call(context, context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT | context.STENCIL_BUFFER_BIT);
@@ -1195,9 +1195,9 @@ function initScene() {
           // console.log('--------restore user');
           // console.log('--------overlay 2');
 
-          // userDrew = false;
+          userDrew = false;
           inUserFrame = true;
-        // }
+        }
       };
       // Module.renderScene();
     }
