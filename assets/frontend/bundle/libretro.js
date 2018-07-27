@@ -3,6 +3,7 @@
  *
  * This provides the basic JavaScript for the RetroArch web player.
  */
+var Browser;
 var BrowserFS = BrowserFS;
 
 zip.workerScriptsPath = '/assets/frontend/bundle/js/';
@@ -98,6 +99,8 @@ let inUserFrame = true;
 let userState = null;
 let sceneState = null;
 let userVao = null;
+let userDrew = false;
+let lastUserDrew = false;
 function initRenderer() {
   if (navigator.xr) {
     delete navigator.xr;
@@ -406,13 +409,7 @@ function initRenderer() {
 function initScene() {
   const {canvas, ctx: context} = Module;
 
-  scene.remove(screenQuad);
-  screenQuad.geometry.dispose();
-  screenQuad.material.dispose();
-  screenQuad.material.uniforms.uTexture.value.dispose();
-  screenQuad = null;
-
-  renderer.clear(true, true, true);
+  // renderer.clear(true, true, true);
 
   const ambientLight = new THREE.AmbientLight(0x808080);
   scene.add(ambientLight);
@@ -986,8 +983,6 @@ function initScene() {
       userVao = context.createVertexArray();
       context.bindVertexArray(userVao);
 
-      let userDrew = false;
-      let lastUserDrew = false;
       const _wrap = oldFn => function() {
         if (inUserFrame && lastUserDrew) {
           inUserFrame = false;
@@ -1335,13 +1330,32 @@ window.addEventListener('drop', e => {
 
           // console.log('arguments', Module.arguments);
 
-          initScene();
-
           console.log('load args', Module.arguments);
 
           removeRunDependency('load');
 
-          Browser.setCanvasSize(window.innerWidth, window.innerHeight);
+          if (!Module.display) {
+            inUserFrame = false;
+            scene.remove(screenQuad);
+            screenQuad.geometry.dispose();
+            screenQuad.material.dispose();
+            screenQuad.material.uniforms.uTexture.value.dispose();
+            screenQuad = null;
+            renderer.getContext().bindVertexArray(0);
+            renderer.state.reset();
+            inUserFrame = true;
+
+            Browser.setCanvasSize(window.innerWidth, window.innerHeight);
+          } else {
+            cancelAnimationFrame(Module.raf);
+            Module.raf = null;
+
+            const leftEyeParameters = Module.display.getEyeParameters('left');
+            const rightEyeParameters = Module.display.getEyeParameters('right');
+            const renderWidth = leftEyeParameters.renderWidth + rightEyeParameters.renderWidth;
+            const renderHeight = Math.max(leftEyeParameters.renderHeight, rightEyeParameters.renderHeight);
+            Browser.setCanvasSize(renderWidth, renderHeight);
+          }
         });
     };
     script.onerror = err => {
@@ -1378,6 +1392,7 @@ var Module = {
     display: null,
     leftEyeParameters: null,
     rightEyeParameters: null,
+    raf: null,
     preRender: () => {},
     postRender: () => {},
     totalDependencies: 0,
@@ -1431,6 +1446,7 @@ window.onload = () => {
   });
 
   initRenderer();
+  initScene();
 
   navigator.getVRDisplays && navigator.getVRDisplays()
     .then(displays => {
@@ -1451,15 +1467,42 @@ window.onload = () => {
             renderer.vr.setDevice(display);
             renderer.vr.enabled = true;
 
-            Browser.setCanvasSize(renderWidth, renderHeight);
-
             Module.display = display;
             Module.leftEyeParameters = leftEyeParameters;
             Module.rightEyeParameters = rightEyeParameters;
+
+            if (Browser) {
+              Browser.setCanvasSize(renderWidth, renderHeight);
+            } else {
+              inUserFrame = false;
+              scene.remove(screenQuad);
+              screenQuad.geometry.dispose();
+              screenQuad.material.dispose();
+              screenQuad.material.uniforms.uTexture.value.dispose();
+              screenQuad = null;
+              renderer.getContext().bindVertexArray(0);
+              renderer.state.reset();
+              inUserFrame = true;
+
+              const _loop = () => {
+                Module.preRender();
+
+                renderer.clear(true, true, true);
+
+                Module.postRender();
+              };
+              const _recurse = () => {
+                Module.raf = requestAnimationFrame(() => {
+                  _loop();
+                  _recurse();
+                });
+              };
+              _recurse();
+            }
           });
       });
     });
-};
+}
 
 function keyPress(k) {
     kp(k, "keydown");
