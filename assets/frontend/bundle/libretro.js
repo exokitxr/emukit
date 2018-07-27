@@ -1011,17 +1011,6 @@ function initScene() {
         preRender.apply(this, arguments);
       })(Module.preRender);
 
-      /* console.log('render 1');
-      function recurse() {
-        console.log('render 2');
-        Module.preRender();
-        cleared = true;
-        Module.postRender();
-
-        requestAnimationFrame(recurse);
-      }
-      requestAnimationFrame(recurse); */
-
       Module.postRender = (postRender => function() {
         const gamepads = navigator.getGamepads();
         const _updateControls = () => {
