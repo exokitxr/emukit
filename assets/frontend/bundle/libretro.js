@@ -1240,8 +1240,6 @@ function initScene() {
           // console.log('--------reset scene');
           // renderer.state.reset(); // XXX
           // console.log('--------render scene');
-          // renderer.clearDepth();
-          // renderer.clearStencil();
           renderer.render(scene, camera);
           // console.log('--------restore user');
           // console.log('--------overlay 2');
