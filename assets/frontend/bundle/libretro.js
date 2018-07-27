@@ -978,10 +978,10 @@ function initScene() {
     };
 
     if (Module.vr) {
-      inUserFrame = false;
+      /* inUserFrame = false;
       context.bindVertexArray(0);
       renderer.state.reset();
-      inUserFrame = true;
+      inUserFrame = true; */
 
       userVao = context.createVertexArray();
       context.bindVertexArray(userVao);
