@@ -1353,6 +1353,8 @@ window.addEventListener('drop', e => {
           console.log('load args', Module.arguments);
 
           removeRunDependency('load');
+
+          Browser.setCanvasSize(window.innerWidth, window.innerHeight);
         });
     };
     script.onerror = err => {
