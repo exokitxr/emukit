@@ -987,9 +987,18 @@ function initScene() {
       context.bindVertexArray(userVao);
 
       let userDrew = false;
+      let lastUserDrew = false;
       const _wrap = oldFn => function() {
+        if (inUserFrame && lastUserDrew) {
+          inUserFrame = false;
+          renderer.clear(true, true, true);
+          inUserFrame = true;
+          lastUserDrew = false;
+        }
+
         oldFn.apply(this, arguments);
-        if (!userDrew && inUserFrame) {
+
+        if (inUserFrame && !userDrew) {
           userDrew = true;
         }
       };
@@ -1249,6 +1258,7 @@ function initScene() {
           // console.log('--------overlay 2');
 
           userDrew = false;
+          lastUserDrew = true;
           inUserFrame = true;
         }
 
