@@ -1452,9 +1452,9 @@ function integrateWasmJS() {
 
   var method = 'native-wasm';
 
-  var wasmTextFile = 'parallel_n64_libretro.wast';
-  var wasmBinaryFile = 'parallel_n64_libretro.wasm';
-  var asmjsCodeFile = 'parallel_n64_libretro.temp.asm.js';
+  var wasmTextFile = '/assets/frontend/bundle/parallel_n64_libretro.wast';
+  var wasmBinaryFile = '/assets/frontend/bundle/parallel_n64_libretro.wasm';
+  var asmjsCodeFile = '/assets/frontend/bundle/parallel_n64_libretro.temp.asm.js';
 
   if (typeof Module['locateFile'] === 'function') {
     if (!isDataURI(wasmTextFile)) {

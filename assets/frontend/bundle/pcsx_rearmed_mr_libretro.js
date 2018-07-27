@@ -1452,9 +1452,9 @@ function integrateWasmJS() {
 
   var method = 'native-wasm';
 
-  var wasmTextFile = 'pcsx_rearmed_libretro.wast';
-  var wasmBinaryFile = 'pcsx_rearmed_libretro.wasm';
-  var asmjsCodeFile = 'pcsx_rearmed_libretro.temp.asm.js';
+  var wasmTextFile = '/assets/frontend/bundle/pcsx_rearmed_libretro.wast';
+  var wasmBinaryFile = '/assets/frontend/bundle/pcsx_rearmed_libretro.wasm';
+  var asmjsCodeFile = '/assets/frontend/bundle/pcsx_rearmed_libretro.temp.asm.js';
 
   if (typeof Module['locateFile'] === 'function') {
     if (!isDataURI(wasmTextFile)) {
