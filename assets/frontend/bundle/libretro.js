@@ -614,7 +614,7 @@ function initScene() {
 
     const lastPresseds = [false, false];
     const lastMenuPresseds = [false, false];
-    const lastGrabbeds = [false, false];
+    // const lastGrabbeds = [false, false];
     const lastPadPresseds = [null, null];
     const gamepadMeshes = (() => {
       const leftGamepadMesh = (() => {
@@ -775,161 +775,189 @@ function initScene() {
       },
     ];
     const LEFT_PAD_KEYS = {
-      left: [
-        {
-          keyCode: 37,
-          which: 37,
-          charCode: 0,
-          key: 'ArrowLeft',
-          code: 'ArrowLeft',
-        },
-        {
-          keyCode: 74,
-          which: 74,
-          charCode: 0,
-          key: 'J',
-          code: 'KeyJ',
-        },
-      ],
-      right: [
-        {
-          keyCode: 39,
-          which: 39,
-          charCode: 0,
-          key: 'ArrowRight',
-          code: 'ArrowRight',
-        },
-        {
-          keyCode: 76,
-          which: 76,
-          charCode: 0,
-          key: 'L',
-          code: 'KeyL',
-        },
-      ],
-      up: [
-        {
-          keyCode: 38,
-          which: 38,
-          charCode: 0,
-          key: 'ArrowUp',
-          code: 'ArrowUp',
-        },
-        {
-          keyCode: 73,
-          which: 73,
-          charCode: 0,
-          key: 'I',
-          code: 'KeyI',
-        },
-      ],
-      down: [
-        {
-          keyCode: 40,
-          which: 40,
-          charCode: 0,
-          key: 'ArrowDown',
-          code: 'ArrowDown',
-        },
-        {
-          keyCode: 75,
-          which: 75,
-          charCode: 0,
-          key: 'K',
-          code: 'KeyK',
-        },
-      ],
-      upLeft: null,
-      upRight: null,
-      downLeft: null,
-      downRight: null,
+      false: {
+        left: [
+          {
+            keyCode: 74,
+            which: 74,
+            charCode: 0,
+            key: 'J',
+            code: 'KeyJ',
+          },
+        ],
+        right: [
+          {
+            keyCode: 76,
+            which: 76,
+            charCode: 0,
+            key: 'L',
+            code: 'KeyL',
+          },
+        ],
+        up: [
+          {
+            keyCode: 73,
+            which: 73,
+            charCode: 0,
+            key: 'I',
+            code: 'KeyI',
+          },
+        ],
+        down: [
+          {
+            keyCode: 75,
+            which: 75,
+            charCode: 0,
+            key: 'K',
+            code: 'KeyK',
+          },
+        ],
+        upLeft: null,
+        upRight: null,
+        downLeft: null,
+        downRight: null,
+      },
+      true: {
+        left: [
+          {
+            keyCode: 37,
+            which: 37,
+            charCode: 0,
+            key: 'ArrowLeft',
+            code: 'ArrowLeft',
+          },
+        ],
+        right: [
+          {
+            keyCode: 39,
+            which: 39,
+            charCode: 0,
+            key: 'ArrowRight',
+            code: 'ArrowRight',
+          },
+        ],
+        up: [
+          {
+            keyCode: 38,
+            which: 38,
+            charCode: 0,
+            key: 'ArrowUp',
+            code: 'ArrowUp',
+          },
+        ],
+        down: [
+          {
+            keyCode: 40,
+            which: 40,
+            charCode: 0,
+            key: 'ArrowDown',
+            code: 'ArrowDown',
+          },
+        ],
+        upLeft: null,
+        upRight: null,
+        downLeft: null,
+        downRight: null,
+      },
     };
-    LEFT_PAD_KEYS.upLeft = LEFT_PAD_KEYS.up.concat(LEFT_PAD_KEYS.left);
-    LEFT_PAD_KEYS.upRight = LEFT_PAD_KEYS.up.concat(LEFT_PAD_KEYS.right);
-    LEFT_PAD_KEYS.downLeft = LEFT_PAD_KEYS.down.concat(LEFT_PAD_KEYS.left);
-    LEFT_PAD_KEYS.downRight = LEFT_PAD_KEYS.down.concat(LEFT_PAD_KEYS.right);
+    [false, true].forEach(grabbed => {
+      LEFT_PAD_KEYS[grabbed].upLeft = LEFT_PAD_KEYS[grabbed].up.concat(LEFT_PAD_KEYS[grabbed].left);
+      LEFT_PAD_KEYS[grabbed].upRight = LEFT_PAD_KEYS[grabbed].up.concat(LEFT_PAD_KEYS[grabbed].right);
+      LEFT_PAD_KEYS[grabbed].downLeft = LEFT_PAD_KEYS[grabbed].down.concat(LEFT_PAD_KEYS[grabbed].left);
+      LEFT_PAD_KEYS[grabbed].downRight = LEFT_PAD_KEYS[grabbed].down.concat(LEFT_PAD_KEYS[grabbed].right);
+    });
     const RIGHT_PAD_KEYS = {
-      left: [
-        {
-          keyCode: 65,
-          which: 65,
-          charCode: 0,
-          key: 'A',
-          code: 'KeyA',
-        },
-      ],
-      right: [
-        {
-          keyCode: 88,
-          which: 88,
-          charCode: 0,
-          key: 'X',
-          code: 'KeyX',
-        },
-      ],
-      up: [
-        {
-          keyCode: 83,
-          which: 83,
-          charCode: 0,
-          key: 'S',
-          code: 'KeyS',
-        },
-      ],
-      down: [
-        {
-          keyCode: 90,
-          which: 90,
-          charCode: 0,
-          key: 'Z',
-          code: 'KeyZ',
-        },
-      ],
-      /* left: [
-        {
-          keyCode: 49,
-          which: 49,
-          charCode: 0,
-          key: '1',
-          code: 'Digit1',
-        },
-      ],
-      right: [
-        {
-          keyCode: 52,
-          which: 52,
-          charCode: 0,
-          key: '4',
-          code: 'Digit4',
-        },
-      ],
-      up: [
-        {
-          keyCode: 51,
-          which: 51,
-          charCode: 0,
-          key: '3',
-          code: 'Digit3',
-        },
-      ],
-      down: [
-        {
-          keyCode: 50,
-          which: 50,
-          charCode: 0,
-          key: '2',
-          code: 'Digit2',
-        },
-      ], */
-      upLeft: null,
-      upRight: null,
-      downLeft: null,
-      downRight: null,
+      false: {
+        left: [
+          {
+            keyCode: 65,
+            which: 65,
+            charCode: 0,
+            key: 'A',
+            code: 'KeyA',
+          },
+        ],
+        right: [
+          {
+            keyCode: 88,
+            which: 88,
+            charCode: 0,
+            key: 'X',
+            code: 'KeyX',
+          },
+        ],
+        up: [
+          {
+            keyCode: 83,
+            which: 83,
+            charCode: 0,
+            key: 'S',
+            code: 'KeyS',
+          },
+        ],
+        down: [
+          {
+            keyCode: 90,
+            which: 90,
+            charCode: 0,
+            key: 'Z',
+            code: 'KeyZ',
+          },
+        ],
+        upLeft: null,
+        upRight: null,
+        downLeft: null,
+        downRight: null,
+      },
+      true: {
+        left: [
+          {
+            keyCode: 49,
+            which: 49,
+            charCode: 0,
+            key: '1',
+            code: 'Digit1',
+          },
+        ],
+        right: [
+          {
+            keyCode: 52,
+            which: 52,
+            charCode: 0,
+            key: '4',
+            code: 'Digit4',
+          },
+        ],
+        up: [
+          {
+            keyCode: 51,
+            which: 51,
+            charCode: 0,
+            key: '3',
+            code: 'Digit3',
+          },
+        ],
+        down: [
+          {
+            keyCode: 50,
+            which: 50,
+            charCode: 0,
+            key: '2',
+            code: 'Digit2',
+          },
+        ],
+        upLeft: null,
+        upRight: null,
+        downLeft: null,
+        downRight: null,
+      },
     };
-    RIGHT_PAD_KEYS.upLeft = RIGHT_PAD_KEYS.up.concat(RIGHT_PAD_KEYS.left);
-    RIGHT_PAD_KEYS.upRight = RIGHT_PAD_KEYS.up.concat(RIGHT_PAD_KEYS.right);
-    RIGHT_PAD_KEYS.downLeft = RIGHT_PAD_KEYS.down.concat(RIGHT_PAD_KEYS.left);
-    RIGHT_PAD_KEYS.downRight = RIGHT_PAD_KEYS.down.concat(RIGHT_PAD_KEYS.right);
+    [false, true].forEach(grabbed => {
+      RIGHT_PAD_KEYS[grabbed].upLeft = RIGHT_PAD_KEYS[grabbed].up.concat(RIGHT_PAD_KEYS[grabbed].left);
+      RIGHT_PAD_KEYS[grabbed].upRight = RIGHT_PAD_KEYS[grabbed].up.concat(RIGHT_PAD_KEYS[grabbed].right);
+      RIGHT_PAD_KEYS[grabbed].downLeft = RIGHT_PAD_KEYS[grabbed].down.concat(RIGHT_PAD_KEYS[grabbed].left);
+      RIGHT_PAD_KEYS[grabbed].downRight = RIGHT_PAD_KEYS[grabbed].down.concat(RIGHT_PAD_KEYS[grabbed].right);
+    });
     const PAD_KEYS = [
       LEFT_PAD_KEYS,
       RIGHT_PAD_KEYS,
@@ -1011,11 +1039,11 @@ function initScene() {
                   window.document.dispatchEvent(keydownEvent);
                 } else {
                   const keydownEvent = new KeyboardEvent('keydown', {
-                    keyCode: 90,
-                    which: 90,
+                    keyCode: 87,
+                    which: 87,
                     charCode: 0,
-                    key: 'Z',
-                    code: 'KeyZ',
+                    key: 'W',
+                    code: 'KeyW',
                   });
                   // console.log('dispatch', keydownEvent.key);
                   window.document.dispatchEvent(keydownEvent);
@@ -1033,18 +1061,42 @@ function initScene() {
                   window.document.dispatchEvent(keyupEvent);
                 } else {
                   const keyupEvent = new KeyboardEvent('keyup', {
-                    keyCode: 90,
-                    which: 90,
+                    keyCode: 87,
+                    which: 87,
                     charCode: 0,
-                    key: 'Z',
-                    code: 'KeyZ',
+                    key: 'W',
+                    code: 'KeyW',
                   });
                   // console.log('dispatch', keyupEvent.key);
                   window.document.dispatchEvent(keyupEvent);
                 }
               }
 
-              const lastGrabbed = lastGrabbeds[i];
+              const lastMenuPressed = lastMenuPresseds[i];
+              lastMenuPresseds[i] = menuPressed;
+              if (menuPressed && !lastMenuPressed) {
+                const keydownEvent = new KeyboardEvent('keydown', {
+                  keyCode: 13,
+                  which: 13,
+                  charCode: 0,
+                  key: 'Enter',
+                  code: 'Enter',
+                });
+                // console.log('dispatch', keydownEvent.key);
+                window.document.dispatchEvent(keydownEvent);
+              } else if (lastMenuPressed && !menuPressed) {
+                const keyupEvent = new KeyboardEvent('keyup', {
+                  keyCode: 13,
+                  which: 13,
+                  charCode: 0,
+                  key: 'Enter',
+                  code: 'Enter',
+                });
+                // console.log('dispatch', keyupEvent.key);
+                window.document.dispatchEvent(keyupEvent);
+              }
+
+              /* const lastGrabbed = lastGrabbeds[i];
               lastGrabbeds[i] = grabbed;
               if (grabbed && !lastGrabbed) {
                 if (i === 0) {
@@ -1090,12 +1142,12 @@ function initScene() {
                   // console.log('dispatch', keyupEvent.key);
                   window.document.dispatchEvent(keyupEvent);
                 }
-              }
+              } */
 
               const lastPadPressed = lastPadPresseds[i];
               lastPadPresseds[i] = padPressed;
               if (padPressed && !lastPadPressed) {
-                const directionSpecs = PAD_KEYS[i][padPressed];
+                const directionSpecs = PAD_KEYS[i][grabbed][padPressed];
                 for (let j = 0; j < directionSpecs.length; j++) {
                   const directionSpec = directionSpecs[j];
                   const {keyCode, which, charCode, key, code} = directionSpec;
@@ -1111,7 +1163,7 @@ function initScene() {
                   window.document.dispatchEvent(keydownEvent);
                 }
               } else if (!padPressed && lastPadPressed) {
-                const directionSpecs = PAD_KEYS[i][lastPadPressed];
+                const directionSpecs = PAD_KEYS[i][grabbed][lastPadPressed];
                 for (let j = 0; j < directionSpecs.length; j++) {
                   const directionSpec = directionSpecs[j];
                   const {keyCode, which, charCode, key, code} = directionSpec;
@@ -1127,7 +1179,7 @@ function initScene() {
                   window.document.dispatchEvent(keyupEvent);
                 }
               } else if (padPressed && lastPadPressed && padPressed !== lastPadPressed) {
-                const lastDirectionSpecs = PAD_KEYS[i][lastPadPressed];
+                const lastDirectionSpecs = PAD_KEYS[i][grabbed][lastPadPressed];
                 for (let j = 0; j < lastDirectionSpecs.length; j++) {
                   const lastDirectionSpec = lastDirectionSpecs[j];
                   const {keyCode, which, charCode, key, code} = lastDirectionSpec;
@@ -1143,7 +1195,7 @@ function initScene() {
                   window.document.dispatchEvent(keyupEvent);
                 }
 
-                const directionSpecs = PAD_KEYS[i][padPressed];
+                const directionSpecs = PAD_KEYS[i][grabbed][padPressed];
                 for (let j = 0; j < directionSpecs.length; j++) {
                   const directionSpec = directionSpecs[j];
                   const {keyCode, which, charCode, key, code} = directionSpec;
