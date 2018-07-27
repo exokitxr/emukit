@@ -3,63 +3,85 @@
  *
  * This provides the basic JavaScript for the RetroArch web player.
  */
+var Browser;
 var BrowserFS = BrowserFS;
 
-function cleanupStorage() {
-    localStorage.clear();
-    if (BrowserFS.FileSystem.IndexedDB.isAvailable() && false) {
-        var req = indexedDB.deleteDatabase("RetroArch");
-        req.onsuccess = function() {
-            console.log("Deleted database successfully");
-        };
-        req.onerror = function() {
-            console.log("Couldn't delete database");
-        };
-        req.onblocked = function() {
-            console.log("Couldn't delete database due to the operation being blocked");
-        };
-    }
+zip.workerScriptsPath = '/assets/frontend/bundle/js/';
 
-    document.getElementById("btnClean").disabled = true;
-}
-
-function setupFileSystem(backend) {
+function setupFileSystem() {
   return Promise.all([
     fetch('/assets/frontend/bundle/.index-xhr').then(res => res.json()),
-    fetch('/assets/cores/.index-xhr').then(res => res.json()),
+    // fetch('/assets/cores/.index-xhr').then(res => res.json()),
+    // fetch('/system/.index-xhr').then(res => res.json()),
     fetch('/assets/frontend/bundle/retroarch.cfg').then(res => res.arrayBuffer()),
-    // fetch('/assets/cores/sonic3.md').then(res => res.arrayBuffer()),
+    fetch('https://www.emuparadise.me/biosfiles/PS1_Bios_SCPH1001.zip')
+      .then(res => res.blob())
+      .then(blob => new Promise((accept, reject) => {
+        zip.createReader(new zip.BlobReader(blob), zipReader => {
+          zipReader.getEntries(entries => {
+            const entry = entries.find(entry => /scph1001.bin/i.test(entry.filename));
+            entry.getData(new zip.BlobWriter('application/octet-stream'), blob => {
+              zipReader.close();
+
+              const fr = new FileReader();
+              fr.onload = e => {
+                accept(e.target.result);
+              };
+              fr.onerror = err => {
+                reject(err);
+              };
+              fr.readAsArrayBuffer(blob);
+            });
+          });
+        }, err => {
+          reject(err);
+        });
+      })),
+    // fetch('/system/scph5501.bin').then(res => res.arrayBuffer()),
   ])
   .then(xhrs => {
-    /* create a mountable filesystem that will server as a root
-       mountpoint for browserfs */
     var mfs = new BrowserFS.FileSystem.MountableFileSystem();
-    var afs = new BrowserFS.FileSystem.InMemory();
-    var xfs = new BrowserFS.FileSystem.XmlHttpRequest(xhrs[0], "/assets/frontend/bundle/");
+    var afs1 = new BrowserFS.FileSystem.InMemory();
+    var afs2 = new BrowserFS.FileSystem.InMemory();
+    var xfs1 = new BrowserFS.FileSystem.XmlHttpRequest(xhrs[0], "/assets/frontend/bundle/");
 
-    console.log("WEBPLAYER: initializing filesystem: " + backend);
-    mfs.mount('/home/web_user/retroarch/userdata', afs);
+    console.log('WEBPLAYER: initializing filesystem');
+    mfs.mount('/home/web_user/retroarch/userdata', afs1);
+    mfs.mount('/home/web_user/retroarch/system', afs2);
 
-    mfs.mount('/home/web_user/retroarch/bundle', xfs);
+    mfs.mount('/home/web_user/retroarch/bundle', xfs1);
     BrowserFS.initialize(mfs);
     var BFS = new BrowserFS.EmscriptenFS();
     FS.mount(BFS, {
       root: '/home'
     }, '/home');
-    console.log("WEBPLAYER: " + backend + " filesystem initialization successful");
+    console.log('WEBPLAYER: filesystem initialization successful');
 
     (() => {
-        const name = 'retroarch.cfg';
-        const dataView = new Uint8Array(xhrs[2]);
-        FS.createDataFile('/', name, dataView, true, false);
+      const name = 'retroarch.cfg';
+      const dataView = new Uint8Array(xhrs[1]);
+      FS.createDataFile('/', name, dataView, true, false);
 
-        const data = FS.readFile(name, {
-            encoding: 'binary'
-        });
-        FS.writeFile('/home/web_user/retroarch/userdata/' + name, data, {
-            encoding: 'binary'
-        });
-        FS.unlink(name);
+      const data = FS.readFile(name, {
+        encoding: 'binary',
+      });
+      FS.writeFile('/home/web_user/retroarch/userdata/' + name, data, {
+        encoding: 'binary',
+      });
+      FS.unlink(name);
+    })();
+    (() => {
+      const name = 'scph5501.bin';
+      const dataView = new Uint8Array(xhrs[2]);
+      FS.createDataFile('/', name, dataView, true, false);
+
+      const data = FS.readFile(name, {
+        encoding: 'binary',
+      });
+      FS.writeFile('/home/web_user/retroarch/system/' + name, data, {
+        encoding: 'binary',
+      });
+      FS.unlink(name);
     })();
 
     // FS.mkdir('/home/web_user/retroarch/userdata/states');
@@ -68,10 +90,17 @@ function setupFileSystem(backend) {
   });
 }
 
+let core = null;
 let renderer = null;
 let scene = null;
 let camera = null;
 let screenQuad = null;
+let inUserFrame = true;
+let userState = null;
+let sceneState = null;
+let userVao = null;
+let userDrew = false;
+let lastUserDrew = false;
 function initRenderer() {
   if (navigator.xr) {
     delete navigator.xr;
@@ -134,7 +163,6 @@ function initRenderer() {
       texture.needsUpdate = true;
 
       requestAnimationFrame(() => {
-        console.log('render');
         renderer.clear(true, true, true);
         scene.background = new THREE.Color(0xFFFFFF);
         renderer.render(scene, camera);
@@ -163,17 +191,225 @@ function initRenderer() {
     return mesh;
   })();
   scene.add(screenQuad);
+
+  const oldBindVertexArray = context.bindVertexArray;
+  const oldUseProgram = context.useProgram;
+  const oldViewport = context.viewport;
+  const oldScissor = context.scissor;
+  const oldEnable = context.enable;
+  const oldDisable = context.disable;
+  const oldBindBuffer = context.bindBuffer;
+  const oldBindFramebuffer = context.bindFramebuffer;
+  const oldActiveTexture = context.activeTexture;
+  const oldBindTexture = context.bindTexture;
+  const oldClearColor = context.clearColor;
+  const oldColorMask = context.colorMask;
+  const oldDepthMask = context.depthMask;
+  const oldFrontFace = context.frontFace;
+  const oldCullFace = context.cullFace;
+  const oldDepthFunc = context.depthFunc;
+  const oldDepthRange = context.depthRange;
+  const _wrapContext = (context, predicate) => {
+    let vertexArrayValue = null;
+    context.bindVertexArray = (bindVertexArray => function(newVertexArrayValue) {
+      if (predicate()) {
+        vertexArrayValue = newVertexArrayValue;
+      }
+      return bindVertexArray.apply(this, arguments);
+    })(context.bindVertexArray);
+    let program = null;
+    context.useProgram = (useProgram => function(newProgram) {
+      if (predicate()) {
+        program = newProgram;
+      }
+      return useProgram.apply(this, arguments);
+    })(context.useProgram);
+    const viewportValue = [null, null, null, null];
+    context.viewport = (viewport => function(x, y, w, h) {
+      if (predicate()) {
+        viewportValue[0] = x;
+        viewportValue[1] = y;
+        viewportValue[2] = w;
+        viewportValue[3] = h;
+      }
+      return viewport.apply(this, arguments);
+    })(context.viewport);
+    const scissorValue = [null, null, null, null];
+    context.scissor = (scissor => function(x, y, w, h) {
+      if (predicate()) {
+        scissorValue[0] = x;
+        scissorValue[1] = y;
+        scissorValue[2] = w;
+        scissorValue[3] = h;
+      }
+      return scissor.apply(this, arguments);
+    })(context.scissor);
+    const enabled = new Map();
+    context.enable = (enable => function(flag) {
+      if (predicate()) {
+        enabled.set(flag, true);
+      }
+      return enable.apply(this, arguments);
+    })(context.enable);
+    context.disable = (disable => function(flag) {
+      if (predicate()) {
+        enabled.set(flag, false);
+      }
+      return disable.apply(this, arguments);
+    })(context.disable);
+    const buffers = new Map();
+    context.bindBuffer = (bindBuffer => function(target, buffer) {
+      if (predicate()) {
+        buffers.set(target, buffer);
+      }
+      return bindBuffer.apply(this, arguments);
+    })(context.bindBuffer);
+    const framebuffers = new Map();
+    context.bindFramebuffer = (bindFramebuffer => function(target, framebuffer) {
+      if (predicate()) {
+        framebuffers.set(target, framebuffer);
+      }
+      return bindFramebuffer.apply(this, arguments);
+    })(context.bindFramebuffer);
+    let activeTextureValue = null;
+    context.activeTexture = (activeTexture => function(newActiveTextureValue) {
+      if (predicate()) {
+        activeTextureValue = newActiveTextureValue;
+      }
+      return activeTexture.apply(this, arguments);
+    })(context.activeTexture);
+    const textures = new Map();
+    context.bindTexture = (bindTexture => function(target, texture) {
+      if (predicate()) {
+        textures.set(target, texture);
+      }
+      return bindTexture.apply(this, arguments);
+    })(context.bindTexture);
+    const clearColorValue = [null, null, null, null];
+    context.clearColor = (clearColor => function(r, g, b, a) {
+      if (predicate()) {
+        clearColorValue[0] = r;
+        clearColorValue[1] = g;
+        clearColorValue[2] = b;
+        clearColorValue[3] = a;
+      }
+      return clearColor.apply(this, arguments);
+    })(context.clearColor);
+    const colorMaskValue = [null, null, null, null];
+    context.colorMask = (colorMask => function(r, g, b, a) {
+      if (predicate()) {
+        colorMaskValue[0] = r;
+        colorMaskValue[1] = g;
+        colorMaskValue[2] = b;
+        colorMaskValue[3] = a;
+      }
+      return colorMask.apply(this, arguments);
+    })(context.colorMask);
+    let depthMaskValue = null;
+    context.depthMask = (depthMask => function(newDepthMask) {
+      if (predicate()) {
+        depthMaskValue = newDepthMask;
+      }
+      return depthMask.apply(this, arguments);
+    })(context.depthMask);
+    let frontFaceValue = null;
+    context.frontFace = (frontFace => function(newFrontFace) {
+      if (predicate()) {
+        frontFaceValue = newFrontFace;
+      }
+      return frontFace.apply(this, arguments);
+    })(context.frontFace);
+    let cullFaceValue = null;
+    context.cullFace = (cullFace => function(newCullFace) {
+      if (predicate()) {
+        cullFaceValue = newCullFace;
+      }
+      return cullFace.apply(this, arguments);
+    })(context.cullFace);
+    let depthFuncValue = null;
+    context.depthFunc = (depthFunc => function(newDepthFunc) {
+      if (predicate()) {
+        depthFuncValue = newDepthFunc;
+      }
+      return depthFunc.apply(this, arguments);
+    })(context.depthFunc);
+    const depthRangeValue = [null, null];
+    context.depthRange = (depthRange => function(near, far) {
+      if (predicate()) {
+        depthRangeValue[0] = near;
+        depthRangeValue[1] = far;
+      }
+      return depthRange.apply(this, arguments);
+    })(context.depthRange);
+
+    return {
+      restore() {
+        if (vertexArrayValue !== null) {
+          oldBindVertexArray.call(context, vertexArrayValue);
+        }
+        if (program !== null) {
+          oldUseProgram.call(context, program);
+        }
+        if (viewportValue[0] !== null) {
+          oldViewport.call(context, viewportValue[0], viewportValue[1], viewportValue[2], viewportValue[3]);
+        }
+        if (scissorValue[0] !== null) {
+          oldScissor.call(context, scissorValue[0], scissorValue[1], scissorValue[2], scissorValue[3]);
+        }
+        for (const k of enabled.keys()) {
+          const v = enabled.get(k);
+          if (v) {
+            oldEnable.call(context, k);
+          } else {
+            oldDisable.call(context, k);
+          }
+        }
+        for (const k of buffers.keys()) {
+          const v = buffers.get(k);
+          oldBindBuffer.call(context, k, v);
+        }
+        for (const k of framebuffers.keys()) {
+          const v = framebuffers.get(k);
+          oldBindFramebuffer.call(context, k, v);
+        }
+        if (activeTextureValue !== null) {
+          oldActiveTexture.call(context, activeTextureValue);
+        }
+        for (const k of textures.keys()) {
+          const v = textures.get(k);
+          oldBindTexture.call(context, k, v);
+        }
+        if (clearColorValue[0] !== null) {
+          oldClearColor.call(context, clearColorValue[0], clearColorValue[1], clearColorValue[2], clearColorValue[3]);
+        }
+        if (colorMaskValue[0] !== null) {
+          oldColorMask.call(context, colorMaskValue[0], colorMaskValue[1], colorMaskValue[2], colorMaskValue[3]);
+        }
+        if (depthMaskValue !== null) {
+          oldDepthMask.call(context, depthMaskValue);
+        }
+        if (frontFaceValue !== null) {
+          oldFrontFace.call(context, frontFaceValue);
+        }
+        if (cullFaceValue !== null) {
+          oldCullFace.call(context, cullFaceValue);
+        }
+        if (depthFuncValue !== null) {
+          oldDepthFunc.call(context, depthFuncValue);
+        }
+        if (depthRangeValue[0] !== null) {
+          oldDepthRange.call(context, depthRangeValue[0], depthRangeValue[1]);
+        }
+      },
+    };
+  };
+  userState = _wrapContext(context, () => inUserFrame);
+  sceneState = _wrapContext(context, () => !inUserFrame);
 }
 function initScene() {
   const {canvas, ctx: context} = Module;
 
-  scene.remove(screenQuad);
-  screenQuad.geometry.dispose();
-  screenQuad.material.dispose();
-  screenQuad.material.uniforms.uTexture.value.dispose();
-  screenQuad = null;
-
-  renderer.clear(true, true, true);
+  // renderer.clear(true, true, true);
 
   const ambientLight = new THREE.AmbientLight(0x808080);
   scene.add(ambientLight);
@@ -375,7 +611,7 @@ function initScene() {
 
     const lastPresseds = [false, false];
     const lastMenuPresseds = [false, false];
-    const lastGrabbeds = [false, false];
+    // const lastGrabbeds = [false, false];
     const lastPadPresseds = [null, null];
     const gamepadMeshes = (() => {
       const leftGamepadMesh = (() => {
@@ -536,125 +772,189 @@ function initScene() {
       },
     ];
     const LEFT_PAD_KEYS = {
-      left: [
-        {
-          keyCode: 37,
-          which: 37,
-          charCode: 0,
-          key: 'ArrowLeft',
-          code: 'ArrowLeft',
-        },
-        {
-          keyCode: 74,
-          which: 74,
-          charCode: 0,
-          key: 'J',
-          code: 'KeyJ',
-        },
-      ],
-      right: [
-        {
-          keyCode: 39,
-          which: 39,
-          charCode: 0,
-          key: 'ArrowRight',
-          code: 'ArrowRight',
-        },
-        {
-          keyCode: 76,
-          which: 76,
-          charCode: 0,
-          key: 'L',
-          code: 'KeyL',
-        },
-      ],
-      up: [
-        {
-          keyCode: 38,
-          which: 38,
-          charCode: 0,
-          key: 'ArrowUp',
-          code: 'ArrowUp',
-        },
-        {
-          keyCode: 73,
-          which: 73,
-          charCode: 0,
-          key: 'I',
-          code: 'KeyI',
-        },
-      ],
-      down: [
-        {
-          keyCode: 40,
-          which: 40,
-          charCode: 0,
-          key: 'ArrowDown',
-          code: 'ArrowDown',
-        },
-        {
-          keyCode: 75,
-          which: 75,
-          charCode: 0,
-          key: 'K',
-          code: 'KeyK',
-        },
-      ],
-      upLeft: null,
-      upRight: null,
-      downLeft: null,
-      downRight: null,
+      false: {
+        left: [
+          {
+            keyCode: 74,
+            which: 74,
+            charCode: 0,
+            key: 'J',
+            code: 'KeyJ',
+          },
+        ],
+        right: [
+          {
+            keyCode: 76,
+            which: 76,
+            charCode: 0,
+            key: 'L',
+            code: 'KeyL',
+          },
+        ],
+        up: [
+          {
+            keyCode: 73,
+            which: 73,
+            charCode: 0,
+            key: 'I',
+            code: 'KeyI',
+          },
+        ],
+        down: [
+          {
+            keyCode: 75,
+            which: 75,
+            charCode: 0,
+            key: 'K',
+            code: 'KeyK',
+          },
+        ],
+        upLeft: null,
+        upRight: null,
+        downLeft: null,
+        downRight: null,
+      },
+      true: {
+        left: [
+          {
+            keyCode: 37,
+            which: 37,
+            charCode: 0,
+            key: 'ArrowLeft',
+            code: 'ArrowLeft',
+          },
+        ],
+        right: [
+          {
+            keyCode: 39,
+            which: 39,
+            charCode: 0,
+            key: 'ArrowRight',
+            code: 'ArrowRight',
+          },
+        ],
+        up: [
+          {
+            keyCode: 38,
+            which: 38,
+            charCode: 0,
+            key: 'ArrowUp',
+            code: 'ArrowUp',
+          },
+        ],
+        down: [
+          {
+            keyCode: 40,
+            which: 40,
+            charCode: 0,
+            key: 'ArrowDown',
+            code: 'ArrowDown',
+          },
+        ],
+        upLeft: null,
+        upRight: null,
+        downLeft: null,
+        downRight: null,
+      },
     };
-    LEFT_PAD_KEYS.upLeft = LEFT_PAD_KEYS.up.concat(LEFT_PAD_KEYS.left);
-    LEFT_PAD_KEYS.upRight = LEFT_PAD_KEYS.up.concat(LEFT_PAD_KEYS.right);
-    LEFT_PAD_KEYS.downLeft = LEFT_PAD_KEYS.down.concat(LEFT_PAD_KEYS.left);
-    LEFT_PAD_KEYS.downRight = LEFT_PAD_KEYS.down.concat(LEFT_PAD_KEYS.right);
+    [false, true].forEach(grabbed => {
+      LEFT_PAD_KEYS[grabbed].upLeft = LEFT_PAD_KEYS[grabbed].up.concat(LEFT_PAD_KEYS[grabbed].left);
+      LEFT_PAD_KEYS[grabbed].upRight = LEFT_PAD_KEYS[grabbed].up.concat(LEFT_PAD_KEYS[grabbed].right);
+      LEFT_PAD_KEYS[grabbed].downLeft = LEFT_PAD_KEYS[grabbed].down.concat(LEFT_PAD_KEYS[grabbed].left);
+      LEFT_PAD_KEYS[grabbed].downRight = LEFT_PAD_KEYS[grabbed].down.concat(LEFT_PAD_KEYS[grabbed].right);
+    });
     const RIGHT_PAD_KEYS = {
-      left: [
-        {
-          keyCode: 49,
-          which: 49,
-          charCode: 0,
-          key: '1',
-          code: 'Digit1',
-        },
-      ],
-      right: [
-        {
-          keyCode: 52,
-          which: 52,
-          charCode: 0,
-          key: '4',
-          code: 'Digit4',
-        },
-      ],
-      up: [
-        {
-          keyCode: 51,
-          which: 51,
-          charCode: 0,
-          key: '3',
-          code: 'Digit3',
-        },
-      ],
-      down: [
-        {
-          keyCode: 50,
-          which: 50,
-          charCode: 0,
-          key: '2',
-          code: 'Digit2',
-        },
-      ],
-      upLeft: null,
-      upRight: null,
-      downLeft: null,
-      downRight: null,
+      false: {
+        left: [
+          {
+            keyCode: 65,
+            which: 65,
+            charCode: 0,
+            key: 'A',
+            code: 'KeyA',
+          },
+        ],
+        right: [
+          {
+            keyCode: 88,
+            which: 88,
+            charCode: 0,
+            key: 'X',
+            code: 'KeyX',
+          },
+        ],
+        up: [
+          {
+            keyCode: 83,
+            which: 83,
+            charCode: 0,
+            key: 'S',
+            code: 'KeyS',
+          },
+        ],
+        down: [
+          {
+            keyCode: 90,
+            which: 90,
+            charCode: 0,
+            key: 'Z',
+            code: 'KeyZ',
+          },
+        ],
+        upLeft: null,
+        upRight: null,
+        downLeft: null,
+        downRight: null,
+      },
+      true: {
+        left: [
+          {
+            keyCode: 49,
+            which: 49,
+            charCode: 0,
+            key: '1',
+            code: 'Digit1',
+          },
+        ],
+        right: [
+          {
+            keyCode: 52,
+            which: 52,
+            charCode: 0,
+            key: '4',
+            code: 'Digit4',
+          },
+        ],
+        up: [
+          {
+            keyCode: 51,
+            which: 51,
+            charCode: 0,
+            key: '3',
+            code: 'Digit3',
+          },
+        ],
+        down: [
+          {
+            keyCode: 50,
+            which: 50,
+            charCode: 0,
+            key: '2',
+            code: 'Digit2',
+          },
+        ],
+        upLeft: null,
+        upRight: null,
+        downLeft: null,
+        downRight: null,
+      },
     };
-    RIGHT_PAD_KEYS.upLeft = RIGHT_PAD_KEYS.up.concat(RIGHT_PAD_KEYS.left);
-    RIGHT_PAD_KEYS.upRight = RIGHT_PAD_KEYS.up.concat(RIGHT_PAD_KEYS.right);
-    RIGHT_PAD_KEYS.downLeft = RIGHT_PAD_KEYS.down.concat(RIGHT_PAD_KEYS.left);
-    RIGHT_PAD_KEYS.downRight = RIGHT_PAD_KEYS.down.concat(RIGHT_PAD_KEYS.right);
+    [false, true].forEach(grabbed => {
+      RIGHT_PAD_KEYS[grabbed].upLeft = RIGHT_PAD_KEYS[grabbed].up.concat(RIGHT_PAD_KEYS[grabbed].left);
+      RIGHT_PAD_KEYS[grabbed].upRight = RIGHT_PAD_KEYS[grabbed].up.concat(RIGHT_PAD_KEYS[grabbed].right);
+      RIGHT_PAD_KEYS[grabbed].downLeft = RIGHT_PAD_KEYS[grabbed].down.concat(RIGHT_PAD_KEYS[grabbed].left);
+      RIGHT_PAD_KEYS[grabbed].downRight = RIGHT_PAD_KEYS[grabbed].down.concat(RIGHT_PAD_KEYS[grabbed].right);
+    });
     const PAD_KEYS = [
       LEFT_PAD_KEYS,
       RIGHT_PAD_KEYS,
@@ -675,196 +975,247 @@ function initScene() {
     };
 
     if (Module.vr) {
-      let cleared = false;
+      /* inUserFrame = false;
+      context.bindVertexArray(0);
+      renderer.state.reset();
+      inUserFrame = true; */
+
+      userVao = context.createVertexArray();
+      context.bindVertexArray(userVao);
+
       const _wrap = oldFn => function() {
+        if (inUserFrame && lastUserDrew) {
+          inUserFrame = false;
+          renderer.clear(true, true, true);
+          inUserFrame = true;
+          lastUserDrew = false;
+        }
+
         oldFn.apply(this, arguments);
-        cleared = true;
+
+        if (inUserFrame && !userDrew) {
+          userDrew = true;
+        }
       };
       context.clear = _wrap(context.clear);
-      // context.drawArrays = _wrap(context.drawArrays);
-      // context.drawElements = _wrap(context.drawElements);
-      Module.renderScene = () => {
-        if (cleared) {
+      context.drawArrays = _wrap(context.drawArrays);
+      context.drawElements = _wrap(context.drawElements);
+
+      Module.preRender = (preRender => function() {
+        userState.restore();
+        preRender.apply(this, arguments);
+      })(Module.preRender);
+
+      Module.postRender = (postRender => function() {
+        const gamepads = navigator.getGamepads();
+        const _updateControls = () => {
+          for (let i = 0; i < gamepads.length; i++) {
+            const gamepad = gamepads[i];
+            if (gamepad) {
+              const pressed = gamepad.buttons[1].pressed;
+              const grabbed = gamepad.buttons[2].pressed;
+              const menuPressed = gamepad.buttons[3].pressed;
+              const padPressed = gamepad.buttons[0].pressed ? _getGamepadDirection(gamepad) : null;
+
+              const lastPressed = lastPresseds[i];
+              lastPresseds[i] = pressed;
+              if (pressed && !lastPressed) {
+                if (i === 0) {
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: 81,
+                    which: 81,
+                    charCode: 0,
+                    key: 'Q',
+                    code: 'KeyQ',
+                  });
+                  // console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                } else {
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: 87,
+                    which: 87,
+                    charCode: 0,
+                    key: 'W',
+                    code: 'KeyW',
+                  });
+                  // console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                }
+              } else if (!pressed && lastPressed) {
+                if (i === 0) {
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: 81,
+                    which: 81,
+                    charCode: 0,
+                    key: 'Q',
+                    code: 'KeyQ',
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                } else {
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: 87,
+                    which: 87,
+                    charCode: 0,
+                    key: 'W',
+                    code: 'KeyW',
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                }
+              }
+
+              const lastMenuPressed = lastMenuPresseds[i];
+              lastMenuPresseds[i] = menuPressed;
+              if (menuPressed && !lastMenuPressed) {
+                const keydownEvent = new KeyboardEvent('keydown', {
+                  keyCode: 13,
+                  which: 13,
+                  charCode: 0,
+                  key: 'Enter',
+                  code: 'Enter',
+                });
+                // console.log('dispatch', keydownEvent.key);
+                window.document.dispatchEvent(keydownEvent);
+              } else if (lastMenuPressed && !menuPressed) {
+                const keyupEvent = new KeyboardEvent('keyup', {
+                  keyCode: 13,
+                  which: 13,
+                  charCode: 0,
+                  key: 'Enter',
+                  code: 'Enter',
+                });
+                // console.log('dispatch', keyupEvent.key);
+                window.document.dispatchEvent(keyupEvent);
+              }
+
+              /* const lastGrabbed = lastGrabbeds[i];
+              lastGrabbeds[i] = grabbed;
+              if (grabbed && !lastGrabbed) {
+                if (i === 0) {
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: 13,
+                    which: 13,
+                    charCode: 0,
+                    key: 'Enter',
+                    code: 'Enter',
+                  });
+                  // console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                } else {
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode: 65,
+                    which: 65,
+                    charCode: 0,
+                    key: 'A',
+                    code: 'KeyA',
+                  });
+                  // console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                }
+              } else if (!grabbed && lastGrabbed) {
+                if (i === 0) {
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: 13,
+                    which: 13,
+                    charCode: 0,
+                    key: 'Enter',
+                    code: 'Enter',
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                } else {
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode: 65,
+                    which: 65,
+                    charCode: 0,
+                    key: 'A',
+                    code: 'KeyA',
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                }
+              } */
+
+              const lastPadPressed = lastPadPresseds[i];
+              lastPadPresseds[i] = padPressed;
+              if (padPressed && !lastPadPressed) {
+                const directionSpecs = PAD_KEYS[i][grabbed][padPressed];
+                for (let j = 0; j < directionSpecs.length; j++) {
+                  const directionSpec = directionSpecs[j];
+                  const {keyCode, which, charCode, key, code} = directionSpec;
+
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode,
+                    which,
+                    charCode,
+                    key,
+                    code,
+                  });
+                  // console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                }
+              } else if (!padPressed && lastPadPressed) {
+                const directionSpecs = PAD_KEYS[i][grabbed][lastPadPressed];
+                for (let j = 0; j < directionSpecs.length; j++) {
+                  const directionSpec = directionSpecs[j];
+                  const {keyCode, which, charCode, key, code} = directionSpec;
+
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode,
+                    which,
+                    charCode,
+                    key,
+                    code,
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                }
+              } else if (padPressed && lastPadPressed && padPressed !== lastPadPressed) {
+                const lastDirectionSpecs = PAD_KEYS[i][grabbed][lastPadPressed];
+                for (let j = 0; j < lastDirectionSpecs.length; j++) {
+                  const lastDirectionSpec = lastDirectionSpecs[j];
+                  const {keyCode, which, charCode, key, code} = lastDirectionSpec;
+
+                  const keyupEvent = new KeyboardEvent('keyup', {
+                    keyCode,
+                    which,
+                    charCode,
+                    key,
+                    code,
+                  });
+                  // console.log('dispatch', keyupEvent.key);
+                  window.document.dispatchEvent(keyupEvent);
+                }
+
+                const directionSpecs = PAD_KEYS[i][grabbed][padPressed];
+                for (let j = 0; j < directionSpecs.length; j++) {
+                  const directionSpec = directionSpecs[j];
+                  const {keyCode, which, charCode, key, code} = directionSpec;
+
+                  const keydownEvent = new KeyboardEvent('keydown', {
+                    keyCode,
+                    which,
+                    charCode,
+                    key,
+                    code,
+                  });
+                  // console.log('dispatch', keydownEvent.key);
+                  window.document.dispatchEvent(keydownEvent);
+                }
+              }
+            }
+          }
+        };
+        _updateControls();
+
+        if (userDrew) {
+          inUserFrame = false;
+
           // oldClear.call(context, context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT | context.STENCIL_BUFFER_BIT);
           // context.disable(context.SCISSOR_TEST);
           // context.disable(context.STENCIL_TEST);
 
-          const gamepads = navigator.getGamepads();
-          const _updateControls = () => {
-            for (let i = 0; i < gamepads.length; i++) {
-              const gamepad = gamepads[i];
-              if (gamepad) {
-                const pressed = gamepad.buttons[1].pressed;
-                const grabbed = gamepad.buttons[2].pressed;
-                const menuPressed = gamepad.buttons[3].pressed;
-                const padPressed = gamepad.buttons[0].pressed ? _getGamepadDirection(gamepad) : null;
-
-                const lastPressed = lastPresseds[i];
-                lastPresseds[i] = pressed;
-                if (pressed && !lastPressed) {
-                  if (i === 0) {
-                    const keydownEvent = new KeyboardEvent('keydown', {
-                      keyCode: 81,
-                      which: 81,
-                      charCode: 0,
-                      key: 'Q',
-                      code: 'KeyQ',
-                    });
-                    // console.log('dispatch', keydownEvent.key);
-                    window.document.dispatchEvent(keydownEvent);
-                  } else {
-                    const keydownEvent = new KeyboardEvent('keydown', {
-                      keyCode: 90,
-                      which: 90,
-                      charCode: 0,
-                      key: 'Z',
-                      code: 'KeyZ',
-                    });
-                    // console.log('dispatch', keydownEvent.key);
-                    window.document.dispatchEvent(keydownEvent);
-                  }
-                } else if (!pressed && lastPressed) {
-                  if (i === 0) {
-                    const keyupEvent = new KeyboardEvent('keyup', {
-                      keyCode: 81,
-                      which: 81,
-                      charCode: 0,
-                      key: 'Q',
-                      code: 'KeyQ',
-                    });
-                    // console.log('dispatch', keyupEvent.key);
-                    window.document.dispatchEvent(keyupEvent);
-                  } else {
-                    const keyupEvent = new KeyboardEvent('keyup', {
-                      keyCode: 90,
-                      which: 90,
-                      charCode: 0,
-                      key: 'Z',
-                      code: 'KeyZ',
-                    });
-                    // console.log('dispatch', keyupEvent.key);
-                    window.document.dispatchEvent(keyupEvent);
-                  }
-                }
-
-                const lastGrabbed = lastGrabbeds[i];
-                lastGrabbeds[i] = grabbed;
-                if (grabbed && !lastGrabbed) {
-                  if (i === 0) {
-                    const keydownEvent = new KeyboardEvent('keydown', {
-                      keyCode: 13,
-                      which: 13,
-                      charCode: 0,
-                      key: 'Enter',
-                      code: 'Enter',
-                    });
-                    // console.log('dispatch', keydownEvent.key);
-                    window.document.dispatchEvent(keydownEvent);
-                  } else {
-                    const keydownEvent = new KeyboardEvent('keydown', {
-                      keyCode: 65,
-                      which: 65,
-                      charCode: 0,
-                      key: 'A',
-                      code: 'KeyA',
-                    });
-                    // console.log('dispatch', keydownEvent.key);
-                    window.document.dispatchEvent(keydownEvent);
-                  }
-                } else if (!grabbed && lastGrabbed) {
-                  if (i === 0) {
-                    const keyupEvent = new KeyboardEvent('keyup', {
-                      keyCode: 13,
-                      which: 13,
-                      charCode: 0,
-                      key: 'Enter',
-                      code: 'Enter',
-                    });
-                    // console.log('dispatch', keyupEvent.key);
-                    window.document.dispatchEvent(keyupEvent);
-                  } else {
-                    const keyupEvent = new KeyboardEvent('keyup', {
-                      keyCode: 65,
-                      which: 65,
-                      charCode: 0,
-                      key: 'A',
-                      code: 'KeyA',
-                    });
-                    // console.log('dispatch', keyupEvent.key);
-                    window.document.dispatchEvent(keyupEvent);
-                  }
-                }
-
-                const lastPadPressed = lastPadPresseds[i];
-                lastPadPresseds[i] = padPressed;
-                if (padPressed && !lastPadPressed) {
-                  const directionSpecs = PAD_KEYS[i][padPressed];
-                  for (let j = 0; j < directionSpecs.length; j++) {
-                    const directionSpec = directionSpecs[j];
-                    const {keyCode, which, charCode, key, code} = directionSpec;
-
-                    const keydownEvent = new KeyboardEvent('keydown', {
-                      keyCode,
-                      which,
-                      charCode,
-                      key,
-                      code,
-                    });
-                    // console.log('dispatch', keydownEvent.key);
-                    window.document.dispatchEvent(keydownEvent);
-                  }
-                } else if (!padPressed && lastPadPressed) {
-                  const directionSpecs = PAD_KEYS[i][lastPadPressed];
-                  for (let j = 0; j < directionSpecs.length; j++) {
-                    const directionSpec = directionSpecs[j];
-                    const {keyCode, which, charCode, key, code} = directionSpec;
-
-                    const keyupEvent = new KeyboardEvent('keyup', {
-                      keyCode,
-                      which,
-                      charCode,
-                      key,
-                      code,
-                    });
-                    // console.log('dispatch', keyupEvent.key);
-                    window.document.dispatchEvent(keyupEvent);
-                  }
-                } else if (padPressed && lastPadPressed && padPressed !== lastPadPressed) {
-                  const lastDirectionSpecs = PAD_KEYS[i][lastPadPressed];
-                  for (let j = 0; j < lastDirectionSpecs.length; j++) {
-                    const lastDirectionSpec = lastDirectionSpecs[j];
-                    const {keyCode, which, charCode, key, code} = lastDirectionSpec;
-
-                    const keyupEvent = new KeyboardEvent('keyup', {
-                      keyCode,
-                      which,
-                      charCode,
-                      key,
-                      code,
-                    });
-                    // console.log('dispatch', keyupEvent.key);
-                    window.document.dispatchEvent(keyupEvent);
-                  }
-
-                  const directionSpecs = PAD_KEYS[i][padPressed];
-                  for (let j = 0; j < directionSpecs.length; j++) {
-                    const directionSpec = directionSpecs[j];
-                    const {keyCode, which, charCode, key, code} = directionSpec;
-
-                    const keydownEvent = new KeyboardEvent('keydown', {
-                      keyCode,
-                      which,
-                      charCode,
-                      key,
-                      code,
-                    });
-                    // console.log('dispatch', keydownEvent.key);
-                    window.document.dispatchEvent(keydownEvent);
-                  }
-                }
-              }
-            }
-          };
           const _updateGamepadMeshes = () => {
             for (let i = 0; i < gamepads.length; i++) {
               const gamepad = gamepads[i];
@@ -876,17 +1227,25 @@ function initScene() {
               }
             }
           };
-          _updateControls();
           _updateGamepadMeshes();
 
-          // console.log('overlay 1');
-          renderer.state.reset();
+          // console.log('--------overlay 1');
+          // console.log('--------restore scene');
+          sceneState.restore();
+          // console.log('--------reset scene');
+          // renderer.state.reset(); // XXX
+          // console.log('--------render scene');
           renderer.render(scene, camera);
-          // console.log('overlay 2');
+          // console.log('--------restore user');
+          // console.log('--------overlay 2');
 
-          cleared = false;
+          userDrew = false;
+          lastUserDrew = true;
+          inUserFrame = true;
         }
-      };
+
+        postRender.apply(this, arguments);
+      })(Module.postRender);
       // Module.renderScene();
     }
 }
@@ -899,48 +1258,16 @@ function _getCoreNameForFileName(fileName) {
       return 'genesis_plus_gx';
     case 'n64':
     case 'z64':
-      return 'parallel_n64';
+      // return 'parallel_n64';
+      return 'parallel_n64_mr';
     case 'cue':
-      return 'mednafen_psx';
+      // return 'pcsx_rearmed';
+      return 'pcsx_rearmed_mr';
+      // return 'mednafen_psx_hw';
     default: return null;
   }
 }
 Error.stackTraceLimit = 200;
-function uploadData(fileData, fileName) {
-  const core = _getCoreNameForFileName(fileName);
-  if (core) {
-    const script = document.createElement('script');
-    script.src = 'assets/frontend/bundle/' + core + '_libretro.js';
-    script.onload = () => {
-      setupFileSystem("browser")
-        .then(() => {
-          const dataView = new Uint8Array(fileData);
-          FS.createDataFile('/', fileName, dataView, true, false);
-
-          const data = FS.readFile(fileName, {
-            encoding: 'binary'
-          });
-          const filePath = '/home/web_user/retroarch/userdata/content/' + fileName;
-          FS.writeFile('/home/web_user/retroarch/userdata/content/' + fileName, data, {
-            encoding: 'binary'
-          });
-          FS.unlink(fileName);
-
-          const handle = GL.registerContext(Module.ctx, {
-            majorVersion: 1,
-            minorVersion: 0,
-          });
-          GL.makeContextCurrent(handle);
-          Module.arguments.push(filePath);
-
-          initScene();
-        });
-    };
-    document.body.appendChild(script);
-  } else {
-    console.warn('could not detect file file for', fileName);
-  }
-}
 
 window.addEventListener('dragover', e => {
     e.preventDefault();
@@ -948,17 +1275,96 @@ window.addEventListener('dragover', e => {
 window.addEventListener('drop', e => {
   e.preventDefault();
 
-  const {files} = e.dataTransfer;
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    const fr = new FileReader();
-    fr.onload = () => {
-      uploadData(fr.result, file.name);
+  const files = Array.from(e.dataTransfer.files);
+  const mainFile = files.find(file => /\.(?:md|n64|z64|cue)$/i.test(file.name));
+  const mainFileName = mainFile ? mainFile.name : null;
+  core = mainFileName ? _getCoreNameForFileName(mainFileName) : null;
+  if (core) {
+    const script = document.createElement('script');
+    script.src = 'assets/frontend/bundle/' + core + '_libretro.js';
+    script.onload = () => {
+      addRunDependency('load');
+
+      setupFileSystem()
+        .then(() =>
+          Promise.all(
+            files.map(file =>
+              new Promise((accept, reject) => {
+                const fr = new FileReader();
+                fr.onload = () => {
+                  const fileData = fr.result;
+                  const fileName = file.name;
+
+                  const dataView = new Uint8Array(fileData);
+                  FS.createDataFile('/', fileName, dataView, true, false);
+
+                  const data = FS.readFile(fileName, {
+                    encoding: 'binary'
+                  });
+                  const filePath = '/home/web_user/retroarch/userdata/content/' + fileName;
+                  FS.writeFile('/home/web_user/retroarch/userdata/content/' + fileName, data, {
+                    encoding: 'binary'
+                  });
+                  FS.unlink(fileName);
+
+                  accept();
+                };
+                fr.onerror = err => {
+                  reject(err);
+                };
+                fr.readAsArrayBuffer(file);
+              })
+            )
+          )
+        )
+        .then(() => {
+          const handle = GL.registerContext(Module.ctx, {
+            majorVersion: 2,
+            minorVersion: 0,
+          });
+          GL.makeContextCurrent(handle);
+
+          const filePath = '/home/web_user/retroarch/userdata/content/' + mainFileName;
+          Module.arguments.push(filePath);
+          // Module.arguments = ['-h'];
+
+          // console.log('arguments', Module.arguments);
+
+          console.log('load args', Module.arguments);
+
+          removeRunDependency('load');
+
+          if (!Module.display) {
+            inUserFrame = false;
+            scene.remove(screenQuad);
+            screenQuad.geometry.dispose();
+            screenQuad.material.dispose();
+            screenQuad.material.uniforms.uTexture.value.dispose();
+            screenQuad = null;
+            renderer.getContext().bindVertexArray(0);
+            renderer.state.reset();
+            inUserFrame = true;
+
+            Browser.setCanvasSize(window.innerWidth, window.innerHeight);
+          } else {
+            cancelAnimationFrame(Module.raf);
+            Module.raf = null;
+
+            const leftEyeParameters = Module.display.getEyeParameters('left');
+            const rightEyeParameters = Module.display.getEyeParameters('right');
+            const renderWidth = leftEyeParameters.renderWidth + rightEyeParameters.renderWidth;
+            const renderHeight = Math.max(leftEyeParameters.renderHeight, rightEyeParameters.renderHeight);
+            Browser.setCanvasSize(renderWidth, renderHeight);
+          }
+        });
     };
-    fr.onerror = err => {
-      console.warn(err.stack);
+    script.onerror = err => {
+      console.warn(err);
     };
-    fr.readAsArrayBuffer(file);
+    document.body.appendChild(script);
+  } else {
+    const err = new Error('could not detect file for ' + mainFileName);
+    console.warn(err);
   }
 });
 
@@ -986,7 +1392,9 @@ var Module = {
     display: null,
     leftEyeParameters: null,
     rightEyeParameters: null,
-    renderScene: () => {},
+    raf: null,
+    preRender: () => {},
+    postRender: () => {},
     totalDependencies: 0,
     monitorRunDependencies: function(left) {
         this.totalDependencies = Math.max(this.totalDependencies, left);
@@ -1038,6 +1446,7 @@ window.onload = () => {
   });
 
   initRenderer();
+  initScene();
 
   navigator.getVRDisplays && navigator.getVRDisplays()
     .then(displays => {
@@ -1058,15 +1467,42 @@ window.onload = () => {
             renderer.vr.setDevice(display);
             renderer.vr.enabled = true;
 
-            Browser.setCanvasSize(renderWidth, renderHeight);
-
             Module.display = display;
             Module.leftEyeParameters = leftEyeParameters;
             Module.rightEyeParameters = rightEyeParameters;
+
+            if (Browser) {
+              Browser.setCanvasSize(renderWidth, renderHeight);
+            } else {
+              inUserFrame = false;
+              scene.remove(screenQuad);
+              screenQuad.geometry.dispose();
+              screenQuad.material.dispose();
+              screenQuad.material.uniforms.uTexture.value.dispose();
+              screenQuad = null;
+              renderer.getContext().bindVertexArray(0);
+              renderer.state.reset();
+              inUserFrame = true;
+
+              const _loop = () => {
+                Module.preRender();
+
+                renderer.clear(true, true, true);
+
+                Module.postRender();
+              };
+              const _recurse = () => {
+                Module.raf = requestAnimationFrame(() => {
+                  _loop();
+                  _recurse();
+                });
+              };
+              _recurse();
+            }
           });
       });
     });
-};
+}
 
 function keyPress(k) {
     kp(k, "keydown");
