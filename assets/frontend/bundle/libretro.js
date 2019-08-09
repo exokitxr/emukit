@@ -1218,6 +1218,10 @@ function initScene() {
 
           const _updateGamepadMeshes = () => {
             for (let i = 0; i < gamepads.length; i++) {
+              // Temporary hack to get this working
+              if (i == 2) {
+                  break;
+	      }
               const gamepad = gamepads[i];
               if (gamepad) {
                 const gamepadMesh = gamepadMeshes[i];
