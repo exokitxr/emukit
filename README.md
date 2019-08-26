@@ -6,7 +6,7 @@ Based on [libretro](https://github.com/libretro/RetroArch)'s WebAssembly build. 
 
 ## Live site
 
-https://exokit.exokit.org
+https://emukit.exokit.org
 
 ## Video demo
 
