@@ -4,10 +4,6 @@
 
 Based on [libretro](https://github.com/libretro/RetroArch)'s WebAssembly build. Everything else is Javascript. Runs best in [Exokit](webmixedreality/exokit).
 
-## Live site
-
-https://emukit.exokit.org
-
 ## Video demo
 
 https://youtu.be/_yQCjKuRRl0
